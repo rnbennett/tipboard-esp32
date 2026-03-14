@@ -70,7 +70,7 @@ esp_err_t board_display_init(esp_lcd_panel_handle_t *panel_handle)
         .bus_id = 0,
         .num_data_lanes = 2,
         .phy_clk_src = MIPI_DSI_PHY_CLK_SRC_DEFAULT,
-        .lane_bit_rate_mbps = 1000,
+        .lane_bit_rate_mbps = 550,
     };
     ESP_RETURN_ON_ERROR(
         esp_lcd_new_dsi_bus(&bus_config, &dsi_bus),
@@ -91,8 +91,8 @@ esp_err_t board_display_init(esp_lcd_panel_handle_t *panel_handle)
     esp_lcd_dpi_panel_config_t dpi_config = JD9165_1024_600_PANEL_60HZ_DPI_CONFIG(
         BOARD_DISP_H_RES, BOARD_DISP_V_RES
     );
-    // The cheops repo found that DMA2D flag is needed:
-    // dpi_config.flags.use_dma2d = true;
+    // DMA2D required for proper display refresh (confirmed by cheops reference)
+    dpi_config.flags.use_dma2d = true;
 
     jd9165_vendor_config_t vendor_config = {
         .dsi_bus = dsi_bus,
