@@ -353,6 +353,13 @@ void ui_update(const status_state_t *state)
         ui_transition_slide(s_hero, state->mode > s_current_mode);
     }
 
+    /* Reposition mode label: shift up when timer is visible to make room */
+    if (state->mode == MODE_POMODORO && state->pomo_phase != POMO_IDLE) {
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -80);
+    } else {
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -40);
+    }
+
     /* Bottom bar Pomodoro text */
     if (state->mode == MODE_POMODORO) {
         if (state->pomo_phase == POMO_WORK) {
@@ -402,8 +409,8 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
         ui_timer_arc_update(pct, scheme->primary, true);
     }
 
-    /* Position timer inside arc */
-    lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 40);
+    /* Position timer text centered inside the arc */
+    lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 80);
 }
 
 /* Cached WiFi state */

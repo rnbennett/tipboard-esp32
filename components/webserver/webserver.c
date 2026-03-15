@@ -258,6 +258,19 @@ void webserver_notify_clients(void)
     cJSON_Delete(json);
 }
 
+/* ── GET / — serve web dashboard ── */
+
+extern const uint8_t index_html_start[] asm("_binary_index_html_start");
+extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
+
+static esp_err_t dashboard_handler(httpd_req_t *req)
+{
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_send(req, (const char *)index_html_start,
+                    index_html_end - index_html_start);
+    return ESP_OK;
+}
+
 /* ── CORS preflight ── */
 
 static esp_err_t cors_handler(httpd_req_t *req)
@@ -274,7 +287,7 @@ static esp_err_t cors_handler(httpd_req_t *req)
 esp_err_t webserver_start(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 12;
+    config.max_uri_handlers = 16;
     config.uri_match_fn = httpd_uri_match_wildcard;
 
     esp_err_t err = httpd_start(&s_server, &config);
@@ -305,6 +318,14 @@ esp_err_t webserver_start(void)
         .is_websocket = true,
     };
     httpd_register_uri_handler(s_server, &ws_uri);
+
+    /* Dashboard — must be last (wildcard catches all non-API routes) */
+    httpd_uri_t dashboard_uri = {
+        .uri = "/",
+        .method = HTTP_GET,
+        .handler = dashboard_handler,
+    };
+    httpd_register_uri_handler(s_server, &dashboard_uri);
 
     ESP_LOGI(TAG, "HTTP server started on port %d", config.server_port);
     return ESP_OK;
