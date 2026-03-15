@@ -101,13 +101,10 @@ static void create_hero_zone(lv_obj_t *parent)
     lv_obj_set_pos(s_stripe_top, 0, 0);
     lv_obj_set_style_bg_color(s_stripe_top, lv_color_hex(0x44CC00), 0);
     lv_obj_set_style_bg_opa(s_stripe_top, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(s_stripe_top, 0, 0);
+    lv_obj_set_style_border_color(s_stripe_top, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_border_width(s_stripe_top, 2, 0);
+    lv_obj_set_style_border_side(s_stripe_top, LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_BOTTOM, 0);
     lv_obj_set_style_radius(s_stripe_top, 0, 0);
-    lv_obj_set_style_shadow_width(s_stripe_top, 12, 0);
-    lv_obj_set_style_shadow_color(s_stripe_top, lv_color_hex(0x44CC00), 0);
-    lv_obj_set_style_shadow_opa(s_stripe_top, LV_OPA_40, 0);
-    lv_obj_set_style_shadow_spread(s_stripe_top, 2, 0);
-    lv_obj_set_style_shadow_offset_y(s_stripe_top, 4, 0);
     lv_obj_set_scrollbar_mode(s_stripe_top, LV_SCROLLBAR_MODE_OFF);
 
     /* Monorail color stripe — bottom (matching band) */
@@ -116,13 +113,10 @@ static void create_hero_zone(lv_obj_t *parent)
     lv_obj_set_pos(s_stripe_bottom, 0, HERO_H - STRIPE_H);
     lv_obj_set_style_bg_color(s_stripe_bottom, lv_color_hex(0x44CC00), 0);
     lv_obj_set_style_bg_opa(s_stripe_bottom, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(s_stripe_bottom, 0, 0);
+    lv_obj_set_style_border_color(s_stripe_bottom, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_border_width(s_stripe_bottom, 2, 0);
+    lv_obj_set_style_border_side(s_stripe_bottom, LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_BOTTOM, 0);
     lv_obj_set_style_radius(s_stripe_bottom, 0, 0);
-    lv_obj_set_style_shadow_width(s_stripe_bottom, 12, 0);
-    lv_obj_set_style_shadow_color(s_stripe_bottom, lv_color_hex(0x44CC00), 0);
-    lv_obj_set_style_shadow_opa(s_stripe_bottom, LV_OPA_40, 0);
-    lv_obj_set_style_shadow_spread(s_stripe_bottom, 2, 0);
-    lv_obj_set_style_shadow_offset_y(s_stripe_bottom, -4, 0);
     lv_obj_set_scrollbar_mode(s_stripe_bottom, LV_SCROLLBAR_MODE_OFF);
 
     /* Timer arc — created early so it sits behind text labels (z-order) */
