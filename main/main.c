@@ -13,6 +13,7 @@
 #include "ntp.h"
 #include "webserver.h"
 #include "weather.h"
+#include "tipboard_mqtt.h"
 
 static const char *TAG = "tipboard";
 
@@ -67,6 +68,7 @@ static void on_state_change(const status_state_t *new_state, void *user_data)
 {
     s_state_dirty = true;
     webserver_notify_clients();
+    tipboard_mqtt_publish_state();
 }
 
 /* ── 1-second LVGL timer: state tick + timer + time + WiFi display ── */
@@ -188,6 +190,10 @@ void app_main(void)
 
     /* ── HTTP server (starts immediately, serves once WiFi connects) ── */
     webserver_start();
+
+    /* ── MQTT (connects to Mosquitto broker for HA integration) ──
+     * MQTT client has built-in auto-reconnect with backoff. */
+    tipboard_mqtt_init();
 
     /* ── Weather polling (fetches every 15 min on Core 1) ── */
     weather_init();
