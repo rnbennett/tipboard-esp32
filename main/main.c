@@ -141,9 +141,10 @@ void app_main(void)
     lv_display_set_flush_cb(disp, lvgl_flush_cb);
     lv_display_set_user_data(disp, panel);
 
+    /* Draw buffers must be DMA-capable for MIPI-DSI DPI panel */
     size_t buf_size = BOARD_DISP_H_RES * 50 * sizeof(lv_color_t);
-    void *buf1 = heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
-    void *buf2 = heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
+    void *buf1 = heap_caps_malloc(buf_size, MALLOC_CAP_DMA);
+    void *buf2 = heap_caps_malloc(buf_size, MALLOC_CAP_DMA);
     assert(buf1 && buf2);
     lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
 
