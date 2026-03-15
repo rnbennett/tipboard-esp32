@@ -1,6 +1,4 @@
-// main/main.c
 #include <stdio.h>
-#include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -8,10 +6,14 @@
 #include "esp_lcd_panel_ops.h"
 #include "lvgl.h"
 #include "board.h"
+#include "state.h"
+#include "ui.h"
 
 static const char *TAG = "tipboard";
 
-// LVGL display flush callback
+static esp_lcd_touch_handle_t s_touch = NULL;
+
+/* ── LVGL display flush callback ── */
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     esp_lcd_panel_handle_t panel = lv_display_get_user_data(disp);
@@ -22,9 +24,7 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     lv_display_flush_ready(disp);
 }
 
-// LVGL touch read callback
-static esp_lcd_touch_handle_t s_touch = NULL;
-
+/* ── LVGL touch read callback ── */
 static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
     if (s_touch == NULL) {
@@ -46,13 +46,29 @@ static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
     }
 }
 
-// LVGL tick callback
+/* ── LVGL tick callback (2ms) ── */
 static void lvgl_tick_cb(void *arg)
 {
     lv_tick_inc(2);
 }
 
-// LVGL task — runs on Core 0, dedicated
+/* ── State change callback — runs in LVGL task context ── */
+static void on_state_change(const status_state_t *new_state, void *user_data)
+{
+    ui_update(new_state);
+}
+
+/* ── 1-second LVGL timer: state tick + timer display ── */
+static void one_second_lv_timer_cb(lv_timer_t *timer)
+{
+    state_tick();
+
+    const status_state_t *state = state_get();
+    int32_t seconds = state_timer_get_seconds();
+    ui_update_timer(seconds, state->timer_type);
+}
+
+/* ── LVGL task — Core 0, dedicated ── */
 static void lvgl_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "LVGL task started on core %d", xPortGetCoreID());
@@ -64,93 +80,69 @@ static void lvgl_task(void *pvParameters)
     }
 }
 
-// Touch coordinate display callback
-static lv_obj_t *s_coords_label = NULL;
-
-static void screen_tap_cb(lv_event_t *e)
-{
-    lv_point_t point;
-    lv_indev_get_point(lv_indev_active(), &point);
-    lv_label_set_text_fmt(s_coords_label, "Touch: %" PRId32 ", %" PRId32, point.x, point.y);
-}
-
 void app_main(void)
 {
-    ESP_LOGI(TAG, "Tipboard starting...");
+    ESP_LOGI(TAG, "Tipboard Phase 1 starting...");
 
-    // ── Hardware init ────────────────────────────────
-    // Display must init before backlight to avoid white flash
+    /* ── Hardware init ── */
     esp_lcd_panel_handle_t panel = NULL;
     ESP_ERROR_CHECK(board_display_init(&panel));
-
     ESP_ERROR_CHECK(board_backlight_init());
 
     esp_lcd_touch_handle_t touch = NULL;
     esp_err_t touch_err = board_touch_init(&touch);
     if (touch_err == ESP_OK) {
         s_touch = touch;
-        ESP_LOGI(TAG, "Touch initialized successfully");
+        ESP_LOGI(TAG, "Touch initialized");
     } else {
         ESP_LOGW(TAG, "Touch init failed (0x%x), continuing without touch", touch_err);
     }
 
-    // ── LVGL init ────────────────────────────────────
+    /* ── LVGL init ── */
     lv_init();
 
-    // Create display
     lv_display_t *disp = lv_display_create(BOARD_DISP_H_RES, BOARD_DISP_V_RES);
     lv_display_set_flush_cb(disp, lvgl_flush_cb);
     lv_display_set_user_data(disp, panel);
 
-    // Allocate draw buffers in PSRAM
+    /* Draw buffers from PSRAM (2x 1024x50 pixels) */
     size_t buf_size = BOARD_DISP_H_RES * 50 * sizeof(lv_color_t);
     void *buf1 = heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
     void *buf2 = heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
     assert(buf1 && buf2);
     lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
 
-    // Create touch input device
+    /* Touch input device */
     lv_indev_t *indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(indev, lvgl_touch_cb);
 
-    // Tick timer (2ms)
-    const esp_timer_create_args_t tick_timer_args = {
+    /* Tick timer (2ms) */
+    const esp_timer_create_args_t tick_args = {
         .callback = lvgl_tick_cb,
         .name = "lvgl_tick",
     };
     esp_timer_handle_t tick_timer;
-    ESP_ERROR_CHECK(esp_timer_create(&tick_timer_args, &tick_timer));
-    ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, 2000)); // 2ms
+    ESP_ERROR_CHECK(esp_timer_create(&tick_args, &tick_timer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, 2000));
 
-    // ── Hello World screen ───────────────────────────
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x1a1a2e), 0);
-    lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_COVER, 0);
+    /* ── State init (loads persisted state from LittleFS) ── */
+    ESP_ERROR_CHECK(state_init());
+    state_register_change_cb(on_state_change, NULL);
 
-    lv_obj_t *label = lv_label_create(lv_screen_active());
-    lv_label_set_text(label, "TIPBOARD");
-    lv_obj_set_style_text_color(label, lv_color_hex(0x00ff88), 0);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_48, 0);
-    lv_obj_align(label, LV_ALIGN_CENTER, 0, -30);
+    /* ── UI init (creates status screen) ── */
+    ESP_ERROR_CHECK(ui_init());
+    ui_update(state_get());
 
-    lv_obj_t *sub = lv_label_create(lv_screen_active());
-    lv_label_set_text(sub, "Touch anywhere to test");
-    lv_obj_set_style_text_color(sub, lv_color_hex(0xaaaaaa), 0);
-    lv_obj_set_style_text_font(sub, &lv_font_montserrat_24, 0);
-    lv_obj_align(sub, LV_ALIGN_CENTER, 0, 30);
+    /* ── 1-second LVGL timer for state tick + UI timer updates ──
+     * Runs inside LVGL task loop — safe for all LVGL calls. */
+    lv_timer_create(one_second_lv_timer_cb, 1000, NULL);
 
-    // Touch coordinate display (temporary, for validation)
-    lv_obj_t *coords = lv_label_create(lv_screen_active());
-    lv_label_set_text(coords, "Touch: ---, ---");
-    lv_obj_set_style_text_color(coords, lv_color_hex(0xffff00), 0);
-    lv_obj_align(coords, LV_ALIGN_BOTTOM_MID, 0, -20);
+    /* ── Backlight on ── */
+    board_backlight_set(100);
 
-    s_coords_label = coords;
-    lv_obj_add_event_cb(lv_screen_active(), screen_tap_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_add_flag(lv_screen_active(), LV_OBJ_FLAG_CLICKABLE);
-
-    // ── Start LVGL task on Core 0 ────────────────────
+    /* ── LVGL task on Core 0 ── */
     xTaskCreatePinnedToCore(lvgl_task, "lvgl", 8192, NULL, 5, NULL, 0);
 
-    ESP_LOGI(TAG, "Tipboard ready.");
+    ESP_LOGI(TAG, "Tipboard Phase 1 running");
 }
