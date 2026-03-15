@@ -1,7 +1,8 @@
 # Target
 CONFIG_IDF_TARGET="esp32p4"
 
-# Chip revision (this board has v1.3)
+# Chip revision (this board has v1.3 — must enable <v3 support first)
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
 CONFIG_ESP32P4_REV_MIN_1=y
 
 # Flash
