@@ -55,7 +55,7 @@ void ntp_get_time_str(char *buf, size_t len)
     int hour = timeinfo.tm_hour % 12;
     if (hour == 0) hour = 12;
     const char *ampm = timeinfo.tm_hour >= 12 ? "PM" : "AM";
-    snprintf(buf, len, "%d:%02d%s", hour, timeinfo.tm_min, ampm);
+    snprintf(buf, len, "%d:%02d %s", hour, timeinfo.tm_min, ampm);
 }
 
 void ntp_get_date_str(char *buf, size_t len)
