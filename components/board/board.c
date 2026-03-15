@@ -64,14 +64,9 @@ esp_err_t board_display_init(esp_lcd_panel_handle_t *panel_handle)
         TAG, "LDO MIPI PHY failed"
     );
 
-    // Create MIPI DSI bus
+    // Create MIPI DSI bus (using JD9165 v2.0.2 recommended config)
     esp_lcd_dsi_bus_handle_t dsi_bus = NULL;
-    esp_lcd_dsi_bus_config_t bus_config = {
-        .bus_id = 0,
-        .num_data_lanes = 2,
-        .phy_clk_src = MIPI_DSI_PHY_CLK_SRC_DEFAULT,
-        .lane_bit_rate_mbps = 550,
-    };
+    esp_lcd_dsi_bus_config_t bus_config = JD9165_PANEL_BUS_DSI_2CH_CONFIG();
     ESP_RETURN_ON_ERROR(
         esp_lcd_new_dsi_bus(&bus_config, &dsi_bus),
         TAG, "DSI bus failed"
@@ -85,18 +80,17 @@ esp_err_t board_display_init(esp_lcd_panel_handle_t *panel_handle)
         TAG, "DBI IO failed"
     );
 
-    // JD9165 panel configuration
-    // IMPORTANT: The stock macro values may need adjustment for this board.
-    // Cross-reference with cheops repo for proven timing values.
+    // JD9165 panel configuration (v2.0.2 API)
+    // DPI macro takes pixel format, DMA2D is already enabled in the macro
     esp_lcd_dpi_panel_config_t dpi_config = JD9165_1024_600_PANEL_60HZ_DPI_CONFIG(
-        BOARD_DISP_H_RES, BOARD_DISP_V_RES
+        MIPI_DSI_DPI_FMT_RGB565
     );
-    // DMA2D required for proper display refresh (confirmed by cheops reference)
-    dpi_config.flags.use_dma2d = true;
 
     jd9165_vendor_config_t vendor_config = {
-        .dsi_bus = dsi_bus,
-        .dpi_config = &dpi_config,
+        .mipi_config = {
+            .dsi_bus = dsi_bus,
+            .dpi_config = &dpi_config,
+        },
     };
 
     esp_lcd_panel_dev_config_t panel_config = {
