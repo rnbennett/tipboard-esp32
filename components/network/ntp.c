@@ -70,5 +70,6 @@ void ntp_get_date_str(char *buf, size_t len)
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
 
-    strftime(buf, len, "%a, %b %d", &timeinfo);
+    /* "Sun Mar 15" format (no comma) */
+    strftime(buf, len, "%a %b %d", &timeinfo);
 }
