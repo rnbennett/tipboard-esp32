@@ -86,14 +86,23 @@ static void create_top_bar(lv_obj_t *parent)
     lv_obj_set_style_text_font(s_weather_label, &font_prototype_20, 0);
     lv_obj_align(s_weather_label, LV_ALIGN_RIGHT_MID, 0, 0);
 
-    /* WiFi info (right of time, tappable — toggles between % and IP) */
-    s_wifi_label = lv_label_create(s_top_bar);
+    /* WiFi info — wrap in a clickable container for larger touch target */
+    lv_obj_t *wifi_btn = lv_obj_create(s_top_bar);
+    lv_obj_set_size(wifi_btn, 280, TOP_BAR_H);
+    lv_obj_align(wifi_btn, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_set_style_bg_opa(wifi_btn, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(wifi_btn, 0, 0);
+    lv_obj_set_style_pad_all(wifi_btn, 0, 0);
+    lv_obj_set_scrollbar_mode(wifi_btn, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_remove_flag(wifi_btn, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(wifi_btn, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(wifi_btn, wifi_label_tap_cb, LV_EVENT_CLICKED, NULL);
+
+    s_wifi_label = lv_label_create(wifi_btn);
     lv_label_set_text(s_wifi_label, "");
     lv_obj_set_style_text_color(s_wifi_label, UI_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(s_wifi_label, &font_prototype_20, 0);
-    lv_obj_align_to(s_wifi_label, s_time_label, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
-    lv_obj_add_flag(s_wifi_label, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_add_event_cb(s_wifi_label, wifi_label_tap_cb, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_obj_align(s_wifi_label, LV_ALIGN_RIGHT_MID, 0, 0);
 }
 
 static void create_hero_zone(lv_obj_t *parent)
@@ -432,8 +441,7 @@ void ui_update_time(const char *time_str, const char *date_str)
         lv_label_set_text(s_wifi_label, "  |  No WiFi");
     }
 
-    /* Reposition WiFi label after time label (since time width changes) */
-    lv_obj_align_to(s_wifi_label, s_time_label, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
+    /* WiFi label is right-aligned inside its own container — no repositioning needed */
 }
 
 void ui_update_wifi_status(const char *ip, bool connected, int rssi_pct)
