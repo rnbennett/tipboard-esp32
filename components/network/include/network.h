@@ -23,3 +23,6 @@ esp_err_t network_set_credentials(const char *ssid, const char *password);
 wifi_state_t network_get_state(void);
 const char *network_get_ip(void);
 const char *network_get_ssid(void);
+
+/* Get WiFi signal strength as percentage (0-100). Returns -1 if not connected. */
+int network_get_rssi_percent(void);

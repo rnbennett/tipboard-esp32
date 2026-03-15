@@ -92,7 +92,9 @@ static void one_second_lv_timer_cb(lv_timer_t *timer)
         ui_update_time(time_str, date_str);
 
         wifi_state_t ws = network_get_state();
-        ui_update_wifi_status(network_get_ip(), ws == WIFI_STATE_CONNECTED);
+        bool connected = (ws == WIFI_STATE_CONNECTED);
+        ui_update_wifi_status(network_get_ip(), connected,
+                              connected ? network_get_rssi_percent() : -1);
     }
 }
 

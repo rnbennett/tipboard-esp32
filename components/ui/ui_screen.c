@@ -26,7 +26,8 @@ static lv_obj_t *s_screen = NULL;
 
 /* Top bar */
 static lv_obj_t *s_top_bar = NULL;
-static lv_obj_t *s_time_label = NULL;
+static lv_obj_t *s_time_label = NULL;   /* Time + date on left */
+static lv_obj_t *s_wifi_label = NULL;   /* WiFi info, tappable, toggles % / IP */
 static lv_obj_t *s_weather_label = NULL;
 
 /* Hero zone */
@@ -48,6 +49,15 @@ static lv_obj_t *s_divider_bottom = NULL;
 /* Current mode for change detection */
 static status_mode_t s_current_mode = MODE_COUNT;
 
+/* WiFi display toggle */
+static bool s_wifi_show_ip = false;
+
+static void wifi_label_tap_cb(lv_event_t *e)
+{
+    s_wifi_show_ip = !s_wifi_show_ip;
+    ESP_LOGI(TAG, "WiFi display toggled to %s", s_wifi_show_ip ? "IP" : "signal");
+}
+
 static void create_top_bar(lv_obj_t *parent)
 {
     s_top_bar = lv_obj_create(parent);
@@ -62,9 +72,9 @@ static void create_top_bar(lv_obj_t *parent)
     lv_obj_set_scrollbar_mode(s_top_bar, LV_SCROLLBAR_MODE_OFF);
     lv_obj_remove_flag(s_top_bar, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* Status bar (left) — WiFi + time + date */
+    /* Time + date (left side) */
     s_time_label = lv_label_create(s_top_bar);
-    lv_label_set_text(s_time_label, "No WiFi | --:--");
+    lv_label_set_text(s_time_label, "--:--");
     lv_obj_set_style_text_color(s_time_label, UI_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(s_time_label, &font_prototype_20, 0);
     lv_obj_align(s_time_label, LV_ALIGN_LEFT_MID, 0, 0);
@@ -75,6 +85,15 @@ static void create_top_bar(lv_obj_t *parent)
     lv_obj_set_style_text_color(s_weather_label, UI_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(s_weather_label, &font_prototype_20, 0);
     lv_obj_align(s_weather_label, LV_ALIGN_RIGHT_MID, 0, 0);
+
+    /* WiFi info (right of time, tappable — toggles between % and IP) */
+    s_wifi_label = lv_label_create(s_top_bar);
+    lv_label_set_text(s_wifi_label, "");
+    lv_obj_set_style_text_color(s_wifi_label, UI_COLOR_TEXT_DIM, 0);
+    lv_obj_set_style_text_font(s_wifi_label, &font_prototype_20, 0);
+    lv_obj_align_to(s_wifi_label, s_time_label, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
+    lv_obj_add_flag(s_wifi_label, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s_wifi_label, wifi_label_tap_cb, LV_EVENT_SHORT_CLICKED, NULL);
 }
 
 static void create_hero_zone(lv_obj_t *parent)
@@ -380,9 +399,10 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
     lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 40);
 }
 
-/* Cached WiFi state for building combined status string */
+/* Cached WiFi state */
 static bool s_wifi_connected = false;
 static char s_wifi_ip[16] = "";
+static int s_wifi_rssi_pct = -1;
 
 /* U+F1EB = FontAwesome WiFi icon (merged into font_prototype_20) */
 #define WIFI_ICON "\xEF\x87\xAB"
@@ -391,23 +411,35 @@ void ui_update_time(const char *time_str, const char *date_str)
 {
     if (!s_time_label) return;
 
-    /* Format: 12:00 PM  |  Sun Mar 15  |  [wifi] 100% 10.0.0.30 */
-    if (date_str && date_str[0] && s_wifi_connected && s_wifi_ip[0]) {
-        lv_label_set_text_fmt(s_time_label, "%s  |  %s  |  " WIFI_ICON " 100%% %s",
-                              time_str, date_str, s_wifi_ip);
-    } else if (date_str && date_str[0]) {
-        lv_label_set_text_fmt(s_time_label, "%s  |  %s  |  No WiFi", time_str, date_str);
-    } else if (s_wifi_connected && s_wifi_ip[0]) {
-        lv_label_set_text_fmt(s_time_label, "%s  |  " WIFI_ICON " 100%% %s",
-                              time_str, s_wifi_ip);
+    /* Format: 12:00PM  |  Sun Mar 15 */
+    if (date_str && date_str[0]) {
+        lv_label_set_text_fmt(s_time_label, "%s  |  %s", time_str, date_str);
     } else {
-        lv_label_set_text_fmt(s_time_label, "%s  |  No WiFi", time_str);
+        lv_label_set_text(s_time_label, time_str);
     }
+
+    /* Update WiFi label separately */
+    if (!s_wifi_label) return;
+
+    if (s_wifi_connected) {
+        if (s_wifi_show_ip && s_wifi_ip[0]) {
+            lv_label_set_text_fmt(s_wifi_label, "  |  " WIFI_ICON " %s", s_wifi_ip);
+        } else {
+            lv_label_set_text_fmt(s_wifi_label, "  |  " WIFI_ICON " %d%%",
+                                  s_wifi_rssi_pct >= 0 ? s_wifi_rssi_pct : 0);
+        }
+    } else {
+        lv_label_set_text(s_wifi_label, "  |  No WiFi");
+    }
+
+    /* Reposition WiFi label after time label (since time width changes) */
+    lv_obj_align_to(s_wifi_label, s_time_label, LV_ALIGN_OUT_RIGHT_MID, 0, 0);
 }
 
-void ui_update_wifi_status(const char *ip, bool connected)
+void ui_update_wifi_status(const char *ip, bool connected, int rssi_pct)
 {
     s_wifi_connected = connected;
+    s_wifi_rssi_pct = rssi_pct;
     if (ip && ip[0]) {
         strncpy(s_wifi_ip, ip, sizeof(s_wifi_ip) - 1);
         s_wifi_ip[sizeof(s_wifi_ip) - 1] = '\0';
