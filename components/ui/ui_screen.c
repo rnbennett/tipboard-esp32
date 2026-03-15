@@ -409,8 +409,8 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
         ui_timer_arc_update(pct, scheme->primary, true);
     }
 
-    /* Position timer + arc below the shifted mode label */
-    lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 60);
+    /* Position timer text centered inside the arc */
+    lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 80);
 }
 
 /* Cached WiFi state */
