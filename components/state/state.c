@@ -65,6 +65,18 @@ esp_err_t state_init(void)
         ESP_LOGW(TAG, "Persistence init failed, using defaults");
     }
 
+    /* Timer state uses monotonic timestamps that don't survive reboots.
+     * Clear all timer/pomodoro state — only mode and subtitle are meaningful. */
+    s_state.timer_type = TIMER_NONE;
+    s_state.timer_started_at = 0;
+    s_state.timer_duration_sec = 0;
+    s_state.pomo_phase = POMO_IDLE;
+    s_state.auto_expire_enabled = false;
+    s_state.auto_expire_at = 0;
+    if (s_state.mode == MODE_POMODORO) {
+        s_state.mode = s_default_mode;
+    }
+
     return ESP_OK;
 }
 
