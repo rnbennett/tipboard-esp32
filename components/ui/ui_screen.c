@@ -382,25 +382,38 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
 
 /* Cached WiFi state for building combined status string */
 static bool s_wifi_connected = false;
+static char s_wifi_ip[16] = "";
+
+/* U+F1EB = FontAwesome WiFi icon (merged into font_prototype_20) */
+#define WIFI_ICON "\xEF\x87\xAB"
 
 void ui_update_time(const char *time_str, const char *date_str)
 {
     if (!s_time_label) return;
 
-    /* Format: 📶 100% | 12:00 PM | Sun Mar 15 */
-    const char *wifi_icon = s_wifi_connected ? "WiFi OK" : "No WiFi";
-
-    if (date_str && date_str[0]) {
-        lv_label_set_text_fmt(s_time_label, "%s | %s | %s", wifi_icon, time_str, date_str);
+    /* Format: 12:00 PM  |  Sun Mar 15  |  [wifi] 100% 10.0.0.30 */
+    if (date_str && date_str[0] && s_wifi_connected && s_wifi_ip[0]) {
+        lv_label_set_text_fmt(s_time_label, "%s  |  %s  |  " WIFI_ICON " 100%% %s",
+                              time_str, date_str, s_wifi_ip);
+    } else if (date_str && date_str[0]) {
+        lv_label_set_text_fmt(s_time_label, "%s  |  %s  |  No WiFi", time_str, date_str);
+    } else if (s_wifi_connected && s_wifi_ip[0]) {
+        lv_label_set_text_fmt(s_time_label, "%s  |  " WIFI_ICON " 100%% %s",
+                              time_str, s_wifi_ip);
     } else {
-        lv_label_set_text_fmt(s_time_label, "%s | %s", wifi_icon, time_str);
+        lv_label_set_text_fmt(s_time_label, "%s  |  No WiFi", time_str);
     }
 }
 
 void ui_update_wifi_status(const char *ip, bool connected)
 {
     s_wifi_connected = connected;
-    /* Weather label (right side) stays empty until weather is implemented */
+    if (ip && ip[0]) {
+        strncpy(s_wifi_ip, ip, sizeof(s_wifi_ip) - 1);
+        s_wifi_ip[sizeof(s_wifi_ip) - 1] = '\0';
+    } else {
+        s_wifi_ip[0] = '\0';
+    }
 }
 
 lv_obj_t *ui_get_screen(void)
