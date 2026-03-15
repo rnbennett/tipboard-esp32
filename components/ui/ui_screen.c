@@ -6,10 +6,7 @@
 
 /* Prototype font — the classic 1982 Epcot geometric typeface */
 LV_FONT_DECLARE(font_prototype_120);
-LV_FONT_DECLARE(font_prototype_96);
-LV_FONT_DECLARE(font_prototype_72);
 LV_FONT_DECLARE(font_prototype_48);
-LV_FONT_DECLARE(font_prototype_28);
 LV_FONT_DECLARE(font_prototype_20);
 
 static const char *TAG = "ui_screen";
@@ -21,7 +18,7 @@ static const char *TAG = "ui_screen";
 /* Zone heights */
 #define TOP_BAR_H      40
 #define BOTTOM_BAR_H   40
-#define STRIPE_H       20    /* Monorail-style color stripe */
+#define STRIPE_H       32    /* Monorail-style color stripe */
 #define HERO_H         (SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H)
 
 /* Screen objects */
@@ -102,10 +99,12 @@ static void create_hero_zone(lv_obj_t *parent)
     lv_obj_set_pos(s_stripe_top, 0, 0);
     lv_obj_set_style_bg_color(s_stripe_top, lv_color_hex(0x44CC00), 0);
     lv_obj_set_style_bg_opa(s_stripe_top, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(s_stripe_top, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_border_width(s_stripe_top, 2, 0);
-    lv_obj_set_style_border_side(s_stripe_top, LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_BOTTOM, 0);
+    lv_obj_set_style_border_width(s_stripe_top, 0, 0);
     lv_obj_set_style_radius(s_stripe_top, 0, 0);
+    lv_obj_set_style_outline_color(s_stripe_top, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_outline_width(s_stripe_top, 3, 0);
+    lv_obj_set_style_outline_pad(s_stripe_top, 0, 0);
+    lv_obj_set_style_outline_opa(s_stripe_top, LV_OPA_COVER, 0);
     lv_obj_set_scrollbar_mode(s_stripe_top, LV_SCROLLBAR_MODE_OFF);
 
     /* Monorail color stripe — bottom (matching band) */
@@ -114,10 +113,12 @@ static void create_hero_zone(lv_obj_t *parent)
     lv_obj_set_pos(s_stripe_bottom, 0, HERO_H - STRIPE_H);
     lv_obj_set_style_bg_color(s_stripe_bottom, lv_color_hex(0x44CC00), 0);
     lv_obj_set_style_bg_opa(s_stripe_bottom, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(s_stripe_bottom, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_border_width(s_stripe_bottom, 2, 0);
-    lv_obj_set_style_border_side(s_stripe_bottom, LV_BORDER_SIDE_TOP | LV_BORDER_SIDE_BOTTOM, 0);
+    lv_obj_set_style_border_width(s_stripe_bottom, 0, 0);
     lv_obj_set_style_radius(s_stripe_bottom, 0, 0);
+    lv_obj_set_style_outline_color(s_stripe_bottom, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_outline_width(s_stripe_bottom, 3, 0);
+    lv_obj_set_style_outline_pad(s_stripe_bottom, 0, 0);
+    lv_obj_set_style_outline_opa(s_stripe_bottom, LV_OPA_COVER, 0);
     lv_obj_set_scrollbar_mode(s_stripe_bottom, LV_SCROLLBAR_MODE_OFF);
 
     /* Timer arc — created early so it sits behind text labels (z-order) */
