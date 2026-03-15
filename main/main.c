@@ -29,14 +29,13 @@ static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
     esp_lcd_touch_read_data(s_touch);
 
-    uint16_t x, y;
-    uint16_t strength;
+    esp_lcd_touch_point_data_t tp_data[1];
     uint8_t count = 0;
-    esp_lcd_touch_get_coordinates(s_touch, &x, &y, &strength, &count, 1);
+    esp_lcd_touch_get_data(s_touch, tp_data, &count, 1);
 
     if (count > 0) {
-        data->point.x = x;
-        data->point.y = y;
+        data->point.x = tp_data[0].x;
+        data->point.y = tp_data[0].y;
         data->state = LV_INDEV_STATE_PRESSED;
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
