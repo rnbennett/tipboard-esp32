@@ -3,6 +3,7 @@
 #include "ui_internal.h"
 #include "esp_log.h"
 #include <stdio.h>
+#include <string.h>
 
 /* Prototype font — the classic 1982 Epcot geometric typeface */
 LV_FONT_DECLARE(font_prototype_120);
@@ -26,7 +27,8 @@ static lv_obj_t *s_screen = NULL;
 
 /* Top bar */
 static lv_obj_t *s_top_bar = NULL;
-static lv_obj_t *s_time_label = NULL;
+static lv_obj_t *s_time_label = NULL;   /* Time + date on left */
+static lv_obj_t *s_wifi_label = NULL;   /* WiFi info, tappable, toggles % / IP */
 static lv_obj_t *s_weather_label = NULL;
 
 /* Hero zone */
@@ -48,6 +50,23 @@ static lv_obj_t *s_divider_bottom = NULL;
 /* Current mode for change detection */
 static status_mode_t s_current_mode = MODE_COUNT;
 
+/* WiFi display toggle */
+static bool s_wifi_show_ip = false;
+
+static void wifi_label_tap_cb(lv_event_t *e)
+{
+    s_wifi_show_ip = !s_wifi_show_ip;
+    ESP_LOGI(TAG, "WiFi display toggled to %s", s_wifi_show_ip ? "IP" : "signal");
+
+    /* Refresh immediately instead of waiting for 30-second timer */
+    char time_str[16], date_str[16];
+    extern void ntp_get_time_str(char *buf, size_t len);
+    extern void ntp_get_date_str(char *buf, size_t len);
+    ntp_get_time_str(time_str, sizeof(time_str));
+    ntp_get_date_str(date_str, sizeof(date_str));
+    ui_update_time(time_str, date_str);
+}
+
 static void create_top_bar(lv_obj_t *parent)
 {
     s_top_bar = lv_obj_create(parent);
@@ -62,19 +81,26 @@ static void create_top_bar(lv_obj_t *parent)
     lv_obj_set_scrollbar_mode(s_top_bar, LV_SCROLLBAR_MODE_OFF);
     lv_obj_remove_flag(s_top_bar, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* Time/date (left) — placeholder until NTP in Phase 2 */
+    /* Single label for time + date + WiFi (left-aligned) */
     s_time_label = lv_label_create(s_top_bar);
     lv_label_set_text(s_time_label, "--:--");
     lv_obj_set_style_text_color(s_time_label, UI_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(s_time_label, &font_prototype_20, 0);
     lv_obj_align(s_time_label, LV_ALIGN_LEFT_MID, 0, 0);
 
-    /* Weather (right) — placeholder until Phase 2 */
+    /* Weather (right) — reserved for weather display */
     s_weather_label = lv_label_create(s_top_bar);
     lv_label_set_text(s_weather_label, "");
     lv_obj_set_style_text_color(s_weather_label, UI_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(s_weather_label, &font_prototype_20, 0);
     lv_obj_align(s_weather_label, LV_ALIGN_RIGHT_MID, 0, 0);
+
+    /* Tap anywhere on top bar to toggle WiFi display (% vs IP) */
+    lv_obj_add_flag(s_top_bar, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(s_top_bar, wifi_label_tap_cb, LV_EVENT_CLICKED, NULL);
+
+    /* s_wifi_label not used as separate object — WiFi info is part of s_time_label */
+    s_wifi_label = NULL;
 }
 
 static void create_hero_zone(lv_obj_t *parent)
@@ -378,6 +404,51 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
 
     /* Position timer inside arc */
     lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 40);
+}
+
+/* Cached WiFi state */
+static bool s_wifi_connected = false;
+static char s_wifi_ip[16] = "";
+static int s_wifi_rssi_pct = -1;
+
+/* U+F1EB = FontAwesome WiFi icon (merged into font_prototype_20) */
+#define WIFI_ICON "\xEF\x87\xAB"
+
+void ui_update_time(const char *time_str, const char *date_str)
+{
+    if (!s_time_label) return;
+
+    /* Build WiFi suffix */
+    char wifi_str[32];
+    if (s_wifi_connected) {
+        if (s_wifi_show_ip && s_wifi_ip[0]) {
+            snprintf(wifi_str, sizeof(wifi_str), WIFI_ICON " %s", s_wifi_ip);
+        } else {
+            snprintf(wifi_str, sizeof(wifi_str), WIFI_ICON " %d%%",
+                     s_wifi_rssi_pct >= 0 ? s_wifi_rssi_pct : 0);
+        }
+    } else {
+        snprintf(wifi_str, sizeof(wifi_str), "No WiFi");
+    }
+
+    /* Format: 12:00PM  |  Sun Mar 15  |  [wifi] 82% */
+    if (date_str && date_str[0]) {
+        lv_label_set_text_fmt(s_time_label, "%s  |  %s  |  %s", time_str, date_str, wifi_str);
+    } else {
+        lv_label_set_text_fmt(s_time_label, "%s  |  %s", time_str, wifi_str);
+    }
+}
+
+void ui_update_wifi_status(const char *ip, bool connected, int rssi_pct)
+{
+    s_wifi_connected = connected;
+    s_wifi_rssi_pct = rssi_pct;
+    if (ip && ip[0]) {
+        strncpy(s_wifi_ip, ip, sizeof(s_wifi_ip) - 1);
+        s_wifi_ip[sizeof(s_wifi_ip) - 1] = '\0';
+    } else {
+        s_wifi_ip[0] = '\0';
+    }
 }
 
 lv_obj_t *ui_get_screen(void)

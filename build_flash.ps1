@@ -1,5 +1,6 @@
 $env:IDF_PATH = "C:\Espressif\frameworks\esp-idf-v5.5.3"
 $env:IDF_TOOLS_PATH = "C:\Espressif"
+$env:ESP_IDF_VERSION = "5.5"
 $env:PATH = "C:\Espressif\tools\riscv32-esp-elf\esp-14.2.0_20251107\riscv32-esp-elf\bin;C:\Espressif\tools\cmake\3.30.2\bin;C:\Espressif\tools\ninja\1.12.1;C:\Espressif\tools\idf-git\2.44.0\cmd;C:\Espressif\python_env\idf5.5_py3.11_env\Scripts;C:\Program Files\Git\cmd;$env:PATH"
 $PYTHON = "C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe"
 
