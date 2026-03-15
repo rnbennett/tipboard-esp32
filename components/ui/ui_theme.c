@@ -19,7 +19,7 @@ static void init_schemes(void)
         .text_primary      = lv_color_hex(0xF0F0F0),
         .text_secondary    = lv_color_hex(0x80CC99),
         .geo_tint          = lv_color_hex(0x00A84E),
-        .geo_opacity       = 38,
+        .geo_opacity       = 50,   /* High — welcoming */
     };
 
     /* Focused — Monorail Gold (#C7A94E) */
@@ -31,7 +31,7 @@ static void init_schemes(void)
         .text_primary      = lv_color_hex(0xF0F0F0),
         .text_secondary    = lv_color_hex(0xD4BB70),
         .geo_tint          = lv_color_hex(0xC7A94E),
-        .geo_opacity       = 25,
+        .geo_opacity       = 35,   /* Subtle — calm tone-on-tone */
     };
 
     /* Meeting — Monorail Red (#E4272C) */
@@ -43,7 +43,7 @@ static void init_schemes(void)
         .text_primary      = lv_color_hex(0xF0F0F0),
         .text_secondary    = lv_color_hex(0xDD8888),
         .geo_tint          = lv_color_hex(0xE4272C),
-        .geo_opacity       = 30,
+        .geo_opacity       = 40,   /* Medium */
     };
 
     /* Away — Monorail Blue (#0065C1) (MonorailBlue!) */
@@ -55,7 +55,7 @@ static void init_schemes(void)
         .text_primary      = lv_color_hex(0xF0F0F0),
         .text_secondary    = lv_color_hex(0x77AADD),
         .geo_tint          = lv_color_hex(0x0065C1),
-        .geo_opacity       = 25,
+        .geo_opacity       = 35,   /* Moderate */
     };
 
     /* Pomodoro — Red (work) → Green (break) */
@@ -67,7 +67,7 @@ static void init_schemes(void)
         .text_primary      = lv_color_hex(0xF0F0F0),
         .text_secondary    = lv_color_hex(0xDD8888),
         .geo_tint          = lv_color_hex(0xE4272C),
-        .geo_opacity       = 25,
+        .geo_opacity       = 35,   /* Increases visibility with progress */
     };
 
     /* Custom — Monorail Teal (#00B5B8) (MonorailTeal!) */
@@ -79,7 +79,7 @@ static void init_schemes(void)
         .text_primary      = lv_color_hex(0xF0F0F0),
         .text_secondary    = lv_color_hex(0x77DDDD),
         .geo_tint          = lv_color_hex(0x00B5B8),
-        .geo_opacity       = 30,
+        .geo_opacity       = 40,   /* Medium */
     };
 
     /* Streaming / On Air — Monorail Silver (#A8A9AD) */
@@ -91,7 +91,7 @@ static void init_schemes(void)
         .text_primary      = lv_color_hex(0xFFFFFF),
         .text_secondary    = lv_color_hex(0xBBBBCC),
         .geo_tint          = lv_color_hex(0xA8A9AD),
-        .geo_opacity       = 22,
+        .geo_opacity       = 30,   /* Quiet but visible */
     };
 
     s_initialized = true;

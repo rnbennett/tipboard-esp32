@@ -14,6 +14,7 @@
 #include "webserver.h"
 #include "weather.h"
 #include "tipboard_mqtt.h"
+#include <time.h>
 
 static const char *TAG = "tipboard";
 
@@ -103,6 +104,17 @@ static void one_second_lv_timer_cb(lv_timer_t *timer)
         const weather_data_t *w = weather_get();
         ui_update_weather(w->temp_f, weather_code_icon(w->weather_code),
                           w->precip_chance, w->valid);
+
+        /* Auto-dim: 10PM-7AM at 15% brightness, otherwise 100% */
+        if (ntp_is_synced()) {
+            time_t now;
+            time(&now);
+            struct tm ti;
+            localtime_r(&now, &ti);
+            int hour = ti.tm_hour;
+            bool quiet = (hour >= 22 || hour < 7);
+            board_backlight_set(quiet ? 15 : 100);
+        }
     }
 }
 
