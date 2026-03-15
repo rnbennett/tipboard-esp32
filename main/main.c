@@ -82,8 +82,13 @@ void app_main(void)
     ESP_ERROR_CHECK(board_backlight_init());
 
     esp_lcd_touch_handle_t touch = NULL;
-    ESP_ERROR_CHECK(board_touch_init(&touch));
-    s_touch = touch;
+    esp_err_t touch_err = board_touch_init(&touch);
+    if (touch_err == ESP_OK) {
+        s_touch = touch;
+        ESP_LOGI(TAG, "Touch initialized successfully");
+    } else {
+        ESP_LOGW(TAG, "Touch init failed (0x%x), continuing without touch", touch_err);
+    }
 
     // ── LVGL init ────────────────────────────────────
     lv_init();
