@@ -147,11 +147,21 @@ esp_err_t board_touch_init(esp_lcd_touch_handle_t *touch_handle)
         TAG, "Touch IO failed"
     );
 
+    // GT911 driver needs driver_data to perform RST/INT address selection
+    static const esp_lcd_touch_io_gt911_config_t gt911_config = {
+        .dev_addr = BOARD_TOUCH_I2C_ADDR,
+    };
+
     esp_lcd_touch_config_t tp_config = {
         .x_max = BOARD_DISP_H_RES,
         .y_max = BOARD_DISP_V_RES,
         .rst_gpio_num = BOARD_TOUCH_RST_GPIO,
         .int_gpio_num = BOARD_TOUCH_INT_GPIO,
+        .levels = {
+            .reset = 0,
+            .interrupt = 0,
+        },
+        .driver_data = (void *)&gt911_config,
     };
 
     ESP_RETURN_ON_ERROR(
