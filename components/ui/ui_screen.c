@@ -20,7 +20,7 @@ static const char *TAG = "ui_screen";
 /* Zone heights */
 #define TOP_BAR_H      40
 #define BOTTOM_BAR_H   40
-#define HEADER_BAR_H   6     /* Glowing color accent bar */
+#define STRIPE_H       20    /* Monorail-style color stripe */
 #define HERO_H         (SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H)
 
 /* Screen objects */
@@ -33,7 +33,8 @@ static lv_obj_t *s_weather_label = NULL;
 
 /* Hero zone */
 static lv_obj_t *s_hero = NULL;
-static lv_obj_t *s_header_bar = NULL;
+static lv_obj_t *s_stripe_top = NULL;     /* Monorail color stripe */
+static lv_obj_t *s_stripe_bottom = NULL;  /* Matching bottom stripe */
 static lv_obj_t *s_mode_label = NULL;
 static lv_obj_t *s_subtitle_label = NULL;
 static lv_obj_t *s_timer_label = NULL;
@@ -94,19 +95,35 @@ static void create_hero_zone(lv_obj_t *parent)
     /* Geodesic pattern (created first so it's behind everything) */
     ui_geodesic_create(s_hero, SCREEN_W, HERO_H);
 
-    /* Glowing header accent bar (full width, at top of hero) */
-    s_header_bar = lv_obj_create(s_hero);
-    lv_obj_set_size(s_header_bar, SCREEN_W, HEADER_BAR_H);
-    lv_obj_set_pos(s_header_bar, 0, 0);
-    lv_obj_set_style_bg_color(s_header_bar, lv_color_hex(0x44CC00), 0);
-    lv_obj_set_style_bg_opa(s_header_bar, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_width(s_header_bar, 0, 0);
-    lv_obj_set_style_radius(s_header_bar, 0, 0);
-    lv_obj_set_style_shadow_width(s_header_bar, 20, 0);
-    lv_obj_set_style_shadow_color(s_header_bar, lv_color_hex(0x44CC00), 0);
-    lv_obj_set_style_shadow_opa(s_header_bar, LV_OPA_50, 0);
-    lv_obj_set_style_shadow_spread(s_header_bar, 4, 0);
-    lv_obj_set_scrollbar_mode(s_header_bar, LV_SCROLLBAR_MODE_OFF);
+    /* Monorail color stripe — top (iconic WDW monorail identity band) */
+    s_stripe_top = lv_obj_create(s_hero);
+    lv_obj_set_size(s_stripe_top, SCREEN_W, STRIPE_H);
+    lv_obj_set_pos(s_stripe_top, 0, 0);
+    lv_obj_set_style_bg_color(s_stripe_top, lv_color_hex(0x44CC00), 0);
+    lv_obj_set_style_bg_opa(s_stripe_top, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(s_stripe_top, 0, 0);
+    lv_obj_set_style_radius(s_stripe_top, 0, 0);
+    lv_obj_set_style_shadow_width(s_stripe_top, 12, 0);
+    lv_obj_set_style_shadow_color(s_stripe_top, lv_color_hex(0x44CC00), 0);
+    lv_obj_set_style_shadow_opa(s_stripe_top, LV_OPA_40, 0);
+    lv_obj_set_style_shadow_spread(s_stripe_top, 2, 0);
+    lv_obj_set_style_shadow_offset_y(s_stripe_top, 4, 0);
+    lv_obj_set_scrollbar_mode(s_stripe_top, LV_SCROLLBAR_MODE_OFF);
+
+    /* Monorail color stripe — bottom (matching band) */
+    s_stripe_bottom = lv_obj_create(s_hero);
+    lv_obj_set_size(s_stripe_bottom, SCREEN_W, STRIPE_H);
+    lv_obj_set_pos(s_stripe_bottom, 0, HERO_H - STRIPE_H);
+    lv_obj_set_style_bg_color(s_stripe_bottom, lv_color_hex(0x44CC00), 0);
+    lv_obj_set_style_bg_opa(s_stripe_bottom, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(s_stripe_bottom, 0, 0);
+    lv_obj_set_style_radius(s_stripe_bottom, 0, 0);
+    lv_obj_set_style_shadow_width(s_stripe_bottom, 12, 0);
+    lv_obj_set_style_shadow_color(s_stripe_bottom, lv_color_hex(0x44CC00), 0);
+    lv_obj_set_style_shadow_opa(s_stripe_bottom, LV_OPA_40, 0);
+    lv_obj_set_style_shadow_spread(s_stripe_bottom, 2, 0);
+    lv_obj_set_style_shadow_offset_y(s_stripe_bottom, -4, 0);
+    lv_obj_set_scrollbar_mode(s_stripe_bottom, LV_SCROLLBAR_MODE_OFF);
 
     /* Timer arc — created early so it sits behind text labels (z-order) */
     ui_timer_arc_create(s_hero);
@@ -287,9 +304,11 @@ void ui_update(const status_state_t *state)
         lv_obj_add_flag(s_subtitle_label, LV_OBJ_FLAG_HIDDEN);
     }
 
-    /* Header bar color + glow */
-    lv_obj_set_style_bg_color(s_header_bar, scheme->primary, 0);
-    lv_obj_set_style_shadow_color(s_header_bar, scheme->primary, 0);
+    /* Monorail stripe colors + glow */
+    lv_obj_set_style_bg_color(s_stripe_top, scheme->primary, 0);
+    lv_obj_set_style_shadow_color(s_stripe_top, scheme->primary, 0);
+    lv_obj_set_style_bg_color(s_stripe_bottom, scheme->primary, 0);
+    lv_obj_set_style_shadow_color(s_stripe_bottom, scheme->primary, 0);
 
     /* Hero background gradient */
     lv_obj_set_style_bg_color(s_hero, scheme->bg_gradient_start, 0);
