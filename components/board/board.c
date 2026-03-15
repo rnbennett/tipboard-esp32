@@ -83,7 +83,7 @@ esp_err_t board_display_init(esp_lcd_panel_handle_t *panel_handle)
     // JD9165 panel configuration (v2.0.2 API)
     // DPI macro takes pixel format, DMA2D is already enabled in the macro
     esp_lcd_dpi_panel_config_t dpi_config = JD9165_1024_600_PANEL_60HZ_DPI_CONFIG(
-        MIPI_DSI_DPI_FMT_RGB565
+        LCD_COLOR_PIXEL_FORMAT_RGB565
     );
 
     jd9165_vendor_config_t vendor_config = {
