@@ -4,6 +4,11 @@
 #include "esp_log.h"
 #include <stdio.h>
 
+/* Prototype font — the classic 1982 Epcot geometric typeface */
+LV_FONT_DECLARE(font_prototype_72);
+LV_FONT_DECLARE(font_prototype_48);
+LV_FONT_DECLARE(font_prototype_28);
+
 static const char *TAG = "ui_screen";
 
 /* Screen dimensions */
@@ -54,6 +59,7 @@ static void create_top_bar(lv_obj_t *parent)
     lv_obj_set_style_pad_left(s_top_bar, 16, 0);
     lv_obj_set_style_pad_right(s_top_bar, 16, 0);
     lv_obj_set_scrollbar_mode(s_top_bar, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_remove_flag(s_top_bar, LV_OBJ_FLAG_SCROLLABLE);
 
     /* Time/date (left) — placeholder until NTP in Phase 2 */
     s_time_label = lv_label_create(s_top_bar);
@@ -100,32 +106,32 @@ static void create_hero_zone(lv_obj_t *parent)
     lv_obj_set_style_shadow_spread(s_header_bar, 4, 0);
     lv_obj_set_scrollbar_mode(s_header_bar, LV_SCROLLBAR_MODE_OFF);
 
-    /* Mode name — Montserrat 48 (Prototype font fallback), ALL CAPS, wide spacing */
-    s_mode_label = lv_label_create(s_hero);
-    lv_label_set_text(s_mode_label, "AVAILABLE");
-    lv_obj_set_style_text_font(s_mode_label, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_text_color(s_mode_label, UI_COLOR_TEXT_WHITE, 0);
-    lv_obj_set_style_text_letter_space(s_mode_label, 8, 0);
-    lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -60);
-
-    /* Subtitle — Montserrat 24, lighter */
-    s_subtitle_label = lv_label_create(s_hero);
-    lv_label_set_text(s_subtitle_label, "");
-    lv_obj_set_style_text_font(s_subtitle_label, &lv_font_montserrat_24, 0);
-    lv_obj_set_style_text_color(s_subtitle_label, UI_COLOR_TEXT_DIM, 0);
-    lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 10);
-    lv_obj_add_flag(s_subtitle_label, LV_OBJ_FLAG_HIDDEN);
-
-    /* Timer arc (created before timer label so label draws on top) */
+    /* Timer arc — created early so it sits behind text labels (z-order) */
     ui_timer_arc_create(s_hero);
 
-    /* Timer display */
+    /* Mode name — Prototype 72px, the classic Epcot geometric typeface */
+    s_mode_label = lv_label_create(s_hero);
+    lv_label_set_text(s_mode_label, "AVAILABLE");
+    lv_obj_set_style_text_font(s_mode_label, &font_prototype_72, 0);
+    lv_obj_set_style_text_color(s_mode_label, UI_COLOR_TEXT_WHITE, 0);
+    lv_obj_set_style_text_letter_space(s_mode_label, 12, 0);
+    lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -40);
+
+    /* Subtitle — Prototype 28px */
+    s_subtitle_label = lv_label_create(s_hero);
+    lv_label_set_text(s_subtitle_label, "");
+    lv_obj_set_style_text_font(s_subtitle_label, &font_prototype_28, 0);
+    lv_obj_set_style_text_color(s_subtitle_label, UI_COLOR_TEXT_DIM, 0);
+    lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 30);
+    lv_obj_add_flag(s_subtitle_label, LV_OBJ_FLAG_HIDDEN);
+
+    /* Timer display — large, positioned below center */
     s_timer_label = lv_label_create(s_hero);
     lv_label_set_text(s_timer_label, "");
     lv_obj_set_style_text_font(s_timer_label, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(s_timer_label, UI_COLOR_TEXT_WHITE, 0);
     lv_obj_set_style_text_opa(s_timer_label, LV_OPA_80, 0);
-    lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 80);
+    lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 100);
 }
 
 static void create_bottom_bar(lv_obj_t *parent)
@@ -140,6 +146,7 @@ static void create_bottom_bar(lv_obj_t *parent)
     lv_obj_set_style_pad_left(s_bottom_bar, 16, 0);
     lv_obj_set_style_pad_right(s_bottom_bar, 16, 0);
     lv_obj_set_scrollbar_mode(s_bottom_bar, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_remove_flag(s_bottom_bar, LV_OBJ_FLAG_SCROLLABLE);
 
     /* Pomodoro trigger label (repurposed from calendar event until Phase 3) */
     s_pomo_label = lv_label_create(s_bottom_bar);
@@ -229,6 +236,7 @@ esp_err_t ui_init(void)
     lv_obj_set_style_bg_color(s_screen, UI_COLOR_BG_BASE, 0);
     lv_obj_set_style_bg_opa(s_screen, LV_OPA_COVER, 0);
     lv_obj_set_scrollbar_mode(s_screen, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_remove_flag(s_screen, LV_OBJ_FLAG_SCROLLABLE);
 
     create_top_bar(s_screen);
     create_hero_zone(s_screen);
@@ -237,6 +245,7 @@ esp_err_t ui_init(void)
 
     /* Touch handlers on hero zone */
     lv_obj_add_flag(s_hero, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(s_hero, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(s_hero, hero_tap_cb, LV_EVENT_SHORT_CLICKED, NULL);
     lv_obj_add_event_cb(s_hero, hero_gesture_cb, LV_EVENT_GESTURE, NULL);
     lv_obj_add_event_cb(s_hero, hero_longpress_cb, LV_EVENT_LONG_PRESSED, NULL);

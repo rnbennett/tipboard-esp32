@@ -6,19 +6,19 @@ static lv_obj_t *s_arc = NULL;
 void ui_timer_arc_create(lv_obj_t *parent)
 {
     s_arc = lv_arc_create(parent);
-    lv_obj_set_size(s_arc, 180, 180);
+    lv_obj_set_size(s_arc, 250, 250);
     lv_arc_set_rotation(s_arc, 270);
     lv_arc_set_bg_angles(s_arc, 0, 360);
     lv_arc_set_range(s_arc, 0, 100);
     lv_arc_set_value(s_arc, 0);
 
     /* Background arc */
-    lv_obj_set_style_arc_width(s_arc, 6, LV_PART_MAIN);
+    lv_obj_set_style_arc_width(s_arc, 8, LV_PART_MAIN);
     lv_obj_set_style_arc_color(s_arc, UI_COLOR_DIVIDER, LV_PART_MAIN);
     lv_obj_set_style_arc_opa(s_arc, LV_OPA_30, LV_PART_MAIN);
 
     /* Progress arc */
-    lv_obj_set_style_arc_width(s_arc, 6, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_width(s_arc, 8, LV_PART_INDICATOR);
     lv_obj_set_style_arc_rounded(s_arc, true, LV_PART_INDICATOR);
 
     /* Remove knob */
