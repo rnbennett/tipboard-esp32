@@ -46,22 +46,37 @@ Then run the full build+flash command above.
 
 ## Architecture
 
-ESP-IDF v5.5.3 project with two components:
+ESP-IDF v5.5.3 project with four components:
 
 - **`components/board/`** — Hardware abstraction layer. All pin definitions in `board.h`, all driver init (MIPI-DSI, I2C touch, LEDC backlight) in `board.c`. Display must init before backlight to avoid white flash.
-- **`main/`** — LVGL integration. Flush callback, touch read callback, tick timer, FreeRTOS task pinned to Core 0. LVGL draw buffers allocated from PSRAM.
+- **`components/state/`** — State management. Mode/timer/priority logic (`state.c`), LittleFS JSON persistence with 2-second debounce (`persist.c`). Timer state uses monotonic timestamps and is cleared on reboot.
+- **`components/ui/`** — LVGL UI. Three-zone screen layout (`ui_screen.c`), WDW Monorail color themes (`ui_theme.c`), Spaceship Earth geodesic hex pattern (`ui_geodesic.c`), timer arc widget (`ui_timer_arc.c`), fade transitions (`ui_transitions.c`). Fonts in `ui/fonts/`.
+- **`main/`** — Wires state + UI together. LVGL flush/touch callbacks, tick timer, 1-second `lv_timer` for state ticks (runs in LVGL task context for thread safety). FreeRTOS task pinned to Core 0.
+
+### Fonts
+- **Prototype** — 1982 Epcot geometric typeface, converted via `lv_font_conv --no-compress` (RLE compression requires `LV_USE_FONT_COMPRESSED` which is not enabled)
+- Active sizes: 120px (hero label), 48px (subtitle/timer), 20px (status bars)
+- Additional sizes (96, 72, 28) in repo but not in build — add to `components/ui/CMakeLists.txt` SRCS to re-enable
+- Generate new sizes: `npx lv_font_conv --bpp 4 --size SIZE --no-compress --font tools/fonts/Prototype.ttf --range 0x20-0x7F --format lvgl --output components/ui/fonts/font_prototype_SIZE.c --lv-include "lvgl.h"`
+
+### Color Themes
+Colors sampled from actual WDW Monorail fleet reference. Each mode maps to a monorail:
+- Available=Green, Focused=Gold, Meeting=Red, Away=Blue, Custom=Teal, Streaming=Silver, Pomodoro=Red→Green
 
 Managed components (auto-downloaded by ESP-IDF component manager):
 - `lvgl/lvgl` v9.5.0
 - `espressif/esp_lcd_jd9165` v2.0.2 — JD9165 v2 API uses `JD9165_PANEL_BUS_DSI_2CH_CONFIG()` macro for DSI bus, `JD9165_1024_600_PANEL_60HZ_DPI_CONFIG(pixel_format)` for DPI config, and nested `.mipi_config` in vendor struct
 - `espressif/esp_lcd_touch_gt911` v1.2.0
+- `joltwallet/littlefs` — LittleFS filesystem for state persistence
 
 ## Key sdkconfig Notes
 
 - `CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y` — MUST be set before `CONFIG_ESP32P4_REV_MIN_1=y` takes effect (rev <3.0 and >=3.0 are mutually exclusive in ESP-IDF)
 - `CONFIG_SPIRAM_MODE_HEX=y` — this board uses HEX PSRAM, not OCT. Using OCT causes illegal instruction crash at boot.
 - `CONFIG_ESP_LDO_RESERVE_PSRAM=y` + channel 2 at 1900mV — required for PSRAM power
+- `CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192` — increased from default 3584 for LVGL object creation headroom
 - When changing `sdkconfig.defaults`, you MUST delete the generated `sdkconfig` file and `build/` directory for changes to take effect
+- CMake component name for cJSON is `json` (not `cJSON`), for LittleFS is `littlefs` (registered as `joltwallet/littlefs` in idf_component.yml)
 
 ## Reference Repos
 
