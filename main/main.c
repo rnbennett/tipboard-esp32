@@ -1,9 +1,11 @@
 // main/main.c
 #include <stdio.h>
+#include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_lcd_panel_ops.h"
 #include "lvgl.h"
 #include "board.h"
 
@@ -17,10 +19,6 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         area->x1, area->y1,
         area->x2 + 1, area->y2 + 1,
         px_map);
-    // Note: calling flush_ready synchronously works but is suboptimal for MIPI-DSI
-    // DPI mode where esp_lcd_panel_draw_bitmap uses DMA. If tearing or corruption
-    // occurs, switch to a DMA completion callback (on_color_trans_done) to signal
-    // flush_ready asynchronously. This synchronous approach is fine for Phase 0.
     lv_display_flush_ready(disp);
 }
 
@@ -29,15 +27,16 @@ static esp_lcd_touch_handle_t s_touch = NULL;
 
 static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
-    uint16_t x[1], y[1];
-    uint8_t count = 0;
-
     esp_lcd_touch_read_data(s_touch);
-    bool touched = esp_lcd_touch_get_coordinates(s_touch, x, y, NULL, &count, 1);
 
-    if (touched && count > 0) {
-        data->point.x = x[0];
-        data->point.y = y[0];
+    uint16_t x, y;
+    uint16_t strength;
+    uint8_t count = 0;
+    esp_lcd_touch_get_coordinates(s_touch, &x, &y, &strength, &count, 1);
+
+    if (count > 0) {
+        data->point.x = x;
+        data->point.y = y;
         data->state = LV_INDEV_STATE_PRESSED;
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
@@ -69,7 +68,7 @@ static void screen_tap_cb(lv_event_t *e)
 {
     lv_point_t point;
     lv_indev_get_point(lv_indev_active(), &point);
-    lv_label_set_text_fmt(s_coords_label, "Touch: %d, %d", point.x, point.y);
+    lv_label_set_text_fmt(s_coords_label, "Touch: %" PRId32 ", %" PRId32, point.x, point.y);
 }
 
 void app_main(void)
@@ -96,9 +95,6 @@ void app_main(void)
     lv_display_set_user_data(disp, panel);
 
     // Allocate draw buffers in PSRAM
-    // Starting with 50 rows (~100KB per buffer). With 32MB PSRAM, can increase to
-    // full-frame (1024*600*2 = ~1.2MB) if performance needs it. Try DIRECT render
-    // mode with full-frame buffers if PARTIAL mode causes tearing.
     size_t buf_size = BOARD_DISP_H_RES * 50 * sizeof(lv_color_t);
     void *buf1 = heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
     void *buf2 = heap_caps_malloc(buf_size, MALLOC_CAP_SPIRAM);
@@ -146,10 +142,6 @@ void app_main(void)
     lv_obj_add_flag(lv_screen_active(), LV_OBJ_FLAG_CLICKABLE);
 
     // ── Start LVGL task on Core 0 ────────────────────
-    // IMPORTANT: After this point, all LVGL API calls from other tasks MUST be
-    // protected with lv_lock()/lv_unlock() (LVGL v9 thread safety).
-    // In Phase 0, all LVGL objects are created before the task starts, so no
-    // locking is needed yet. Phase 1+ will add a proper mutex wrapper.
     xTaskCreatePinnedToCore(lvgl_task, "lvgl", 8192, NULL, 5, NULL, 0);
 
     ESP_LOGI(TAG, "Tipboard ready.");
