@@ -127,13 +127,14 @@ static void create_hero_zone(lv_obj_t *parent)
     lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 30);
     lv_obj_add_flag(s_subtitle_label, LV_OBJ_FLAG_HIDDEN);
 
-    /* Timer display — large, positioned below center */
+    /* Timer display — Prototype 48, hidden by default (only shown during Pomodoro/countdown) */
     s_timer_label = lv_label_create(s_hero);
     lv_label_set_text(s_timer_label, "");
-    lv_obj_set_style_text_font(s_timer_label, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_font(s_timer_label, &font_prototype_48, 0);
     lv_obj_set_style_text_color(s_timer_label, UI_COLOR_TEXT_WHITE, 0);
     lv_obj_set_style_text_opa(s_timer_label, LV_OPA_80, 0);
     lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 100);
+    lv_obj_add_flag(s_timer_label, LV_OBJ_FLAG_HIDDEN);
 }
 
 static void create_bottom_bar(lv_obj_t *parent)
@@ -329,18 +330,16 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
 {
     if (!s_timer_label) return;
 
-    if (type == TIMER_NONE) {
-        lv_label_set_text(s_timer_label, "");
+    /* Only show timer during countdown (Pomodoro, custom countdown).
+     * No timer displayed for TIMER_NONE or TIMER_ELAPSED. */
+    if (type != TIMER_COUNTDOWN || seconds <= 0) {
+        lv_obj_add_flag(s_timer_label, LV_OBJ_FLAG_HIDDEN);
         ui_timer_arc_update(0, lv_color_black(), false);
         return;
     }
 
-    /* For countdown, hide when expired. For elapsed, always show (even at 0). */
-    if (type == TIMER_COUNTDOWN && seconds <= 0) {
-        lv_label_set_text(s_timer_label, "");
-        ui_timer_arc_update(0, lv_color_black(), false);
-        return;
-    }
+    /* Show countdown timer */
+    lv_obj_remove_flag(s_timer_label, LV_OBJ_FLAG_HIDDEN);
 
     int h = seconds / 3600;
     int m = (seconds % 3600) / 60;
@@ -353,23 +352,17 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
     }
 
     /* Timer arc for countdown */
-    if (type == TIMER_COUNTDOWN) {
-        const status_state_t *state = state_get();
-        if (state->timer_duration_sec > 0) {
-            int32_t pct = 100 - ((seconds * 100) / state->timer_duration_sec);
-            if (pct < 0) pct = 0;
-            if (pct > 100) pct = 100;
-            const mode_color_scheme_t *scheme = ui_theme_get_scheme(state->mode);
-            ui_timer_arc_update(pct, scheme->primary, true);
-        }
-        /* Reposition timer label inside arc */
-        lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 40);
-        lv_obj_set_style_text_font(s_timer_label, &lv_font_montserrat_36, 0);
-    } else {
-        ui_timer_arc_update(0, lv_color_black(), false);
-        lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 80);
-        lv_obj_set_style_text_font(s_timer_label, &lv_font_montserrat_48, 0);
+    const status_state_t *state = state_get();
+    if (state->timer_duration_sec > 0) {
+        int32_t pct = 100 - ((seconds * 100) / state->timer_duration_sec);
+        if (pct < 0) pct = 0;
+        if (pct > 100) pct = 100;
+        const mode_color_scheme_t *scheme = ui_theme_get_scheme(state->mode);
+        ui_timer_arc_update(pct, scheme->primary, true);
     }
+
+    /* Position timer inside arc */
+    lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 40);
 }
 
 lv_obj_t *ui_get_screen(void)
