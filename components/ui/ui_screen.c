@@ -460,11 +460,12 @@ void ui_update_weather(float temp_f, const char *icon, int precip_pct, bool vali
         return;
     }
 
-    /* Format: "62°F CLR 17%" — degree symbol (U+00B0) included in font */
+    /* Format: "62F CLR 17%" */
+    int temp_i = (int)(temp_f + 0.5f);
     if (precip_pct > 0) {
-        lv_label_set_text_fmt(s_weather_label, "%.0f\xC2\xB0""F %s %d%%", temp_f, icon, precip_pct);
+        lv_label_set_text_fmt(s_weather_label, "%dF %s %d%%", temp_i, icon, precip_pct);
     } else {
-        lv_label_set_text_fmt(s_weather_label, "%.0f\xC2\xB0""F %s", temp_f, icon);
+        lv_label_set_text_fmt(s_weather_label, "%dF %s", temp_i, icon);
     }
 }
 
