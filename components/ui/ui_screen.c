@@ -451,6 +451,23 @@ void ui_update_wifi_status(const char *ip, bool connected, int rssi_pct)
     }
 }
 
+void ui_update_weather(float temp_f, const char *icon, int precip_pct, bool valid)
+{
+    if (!s_weather_label) return;
+
+    if (!valid) {
+        lv_label_set_text(s_weather_label, "");
+        return;
+    }
+
+    /* Format: "62°F CLR 17%" */
+    if (precip_pct > 0) {
+        lv_label_set_text_fmt(s_weather_label, "%.0f°F %s %d%%", temp_f, icon, precip_pct);
+    } else {
+        lv_label_set_text_fmt(s_weather_label, "%.0f°F %s", temp_f, icon);
+    }
+}
+
 lv_obj_t *ui_get_screen(void)
 {
     return s_screen;

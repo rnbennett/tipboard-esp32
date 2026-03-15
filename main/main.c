@@ -12,6 +12,7 @@
 #include "network.h"
 #include "ntp.h"
 #include "webserver.h"
+#include "weather.h"
 
 static const char *TAG = "tipboard";
 
@@ -95,6 +96,11 @@ static void one_second_lv_timer_cb(lv_timer_t *timer)
         bool connected = (ws == WIFI_STATE_CONNECTED);
         ui_update_wifi_status(network_get_ip(), connected,
                               connected ? network_get_rssi_percent() : -1);
+
+        /* Weather display */
+        const weather_data_t *w = weather_get();
+        ui_update_weather(w->temp_f, weather_code_icon(w->weather_code),
+                          w->precip_chance, w->valid);
     }
 }
 
@@ -182,5 +188,8 @@ void app_main(void)
     /* ── HTTP server (starts immediately, serves once WiFi connects) ── */
     webserver_start();
 
-    ESP_LOGI(TAG, "Tipboard Phase 2A running");
+    /* ── Weather polling (fetches every 15 min on Core 1) ── */
+    weather_init();
+
+    ESP_LOGI(TAG, "Tipboard Phase 2C running");
 }
