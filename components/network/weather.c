@@ -126,8 +126,8 @@ static esp_err_t fetch_weather(void)
 
 static void weather_task(void *arg)
 {
-    /* Wait a bit for WiFi to fully stabilize */
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    /* Wait for WiFi to connect before first fetch */
+    vTaskDelay(pdMS_TO_TICKS(15000));
 
     while (1) {
         fetch_weather();
