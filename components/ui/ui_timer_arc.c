@@ -31,7 +31,7 @@ void ui_timer_arc_create(lv_obj_t *parent)
     /* Initially hidden */
     lv_obj_add_flag(s_arc, LV_OBJ_FLAG_HIDDEN);
 
-    lv_obj_align(s_arc, LV_ALIGN_CENTER, 0, 40);
+    lv_obj_align(s_arc, LV_ALIGN_CENTER, 0, 60);
 }
 
 void ui_timer_arc_update(int32_t progress_pct, lv_color_t color, bool visible)
