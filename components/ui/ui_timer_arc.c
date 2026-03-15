@@ -6,7 +6,7 @@ static lv_obj_t *s_arc = NULL;
 void ui_timer_arc_create(lv_obj_t *parent)
 {
     s_arc = lv_arc_create(parent);
-    lv_obj_set_size(s_arc, 250, 250);
+    lv_obj_set_size(s_arc, 160, 160);
     lv_arc_set_rotation(s_arc, 270);
     lv_arc_set_bg_angles(s_arc, 0, 360);
     lv_arc_set_range(s_arc, 0, 100);
@@ -31,7 +31,7 @@ void ui_timer_arc_create(lv_obj_t *parent)
     /* Initially hidden */
     lv_obj_add_flag(s_arc, LV_OBJ_FLAG_HIDDEN);
 
-    lv_obj_align(s_arc, LV_ALIGN_CENTER, 0, 40);
+    lv_obj_align(s_arc, LV_ALIGN_CENTER, 0, 80);
 }
 
 void ui_timer_arc_update(int32_t progress_pct, lv_color_t color, bool visible)
