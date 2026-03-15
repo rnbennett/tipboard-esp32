@@ -224,7 +224,16 @@ input[type="range"]::-webkit-slider-thumb {
 @media (max-width: 480px) {
   .container { padding: 12px; }
   #status-mode { font-size: 22px; }
-  .mode-btn { padding: 8px 12px; font-size: 13px; }
+  .mode-btn { padding: 8px 12px; font-size: 13px; flex: 1; min-width: 80px; text-align: center; }
+  .timer-row { flex-direction: column; align-items: stretch; }
+  .timer-row button { width: 100%; }
+  .input-row { flex-direction: column; }
+  .input-row button { width: 100%; }
+  header h1 { font-size: 16px; letter-spacing: 3px; }
+}
+@media (max-width: 360px) {
+  #status-mode { font-size: 18px; letter-spacing: 1px; }
+  .mode-btn { font-size: 12px; padding: 6px 8px; }
 }
 </style>
 </head>
