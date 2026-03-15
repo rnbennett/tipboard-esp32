@@ -1,6 +1,9 @@
 # Target
 CONFIG_IDF_TARGET="esp32p4"
 
+# Chip revision (this board has v1.3)
+CONFIG_ESP32P4_REV_MIN_1=y
+
 # Flash
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
