@@ -1,6 +1,7 @@
 #include "ui_theme.h"
 
 /* Runtime-initialized scheme table.
+ * Colors sampled from actual WDW Monorail fleet reference image.
  * lv_color_hex() can't be used in static initializers, so we init on first use. */
 static mode_color_scheme_t s_schemes[MODE_COUNT];
 static bool s_initialized = false;
@@ -9,93 +10,87 @@ static void init_schemes(void)
 {
     if (s_initialized) return;
 
-    /* Available — Monorail Green
-     * Bright welcoming green, lighter background */
+    /* Available — Monorail Green (#00A84E) */
     s_schemes[MODE_AVAILABLE] = (mode_color_scheme_t){
-        .primary           = lv_color_hex(0x44CC00),
-        .primary_dim       = lv_color_hex(0x228800),
-        .bg_gradient_start = lv_color_hex(0x0A2A12),
-        .bg_gradient_end   = lv_color_hex(0x0F3D1A),
+        .primary           = lv_color_hex(0x00A84E),
+        .primary_dim       = lv_color_hex(0x007A38),
+        .bg_gradient_start = lv_color_hex(0x0A2218),
+        .bg_gradient_end   = lv_color_hex(0x0E3522),
         .text_primary      = lv_color_hex(0xF0F0F0),
-        .text_secondary    = lv_color_hex(0x88CC88),
-        .geo_tint          = lv_color_hex(0x44CC00),
+        .text_secondary    = lv_color_hex(0x80CC99),
+        .geo_tint          = lv_color_hex(0x00A84E),
         .geo_opacity       = 38,
     };
 
-    /* Focused — Monorail Gold
-     * Rich gold from actual monorail (deeper than pure yellow) */
+    /* Focused — Monorail Gold (#C7A94E) */
     s_schemes[MODE_FOCUSED] = (mode_color_scheme_t){
-        .primary           = lv_color_hex(0xD4A017),
-        .primary_dim       = lv_color_hex(0x9A7510),
-        .bg_gradient_start = lv_color_hex(0x1A1608),
-        .bg_gradient_end   = lv_color_hex(0x2A220C),
+        .primary           = lv_color_hex(0xC7A94E),
+        .primary_dim       = lv_color_hex(0x8E7A38),
+        .bg_gradient_start = lv_color_hex(0x18150A),
+        .bg_gradient_end   = lv_color_hex(0x28220E),
         .text_primary      = lv_color_hex(0xF0F0F0),
-        .text_secondary    = lv_color_hex(0xDDB855),
-        .geo_tint          = lv_color_hex(0xD4A017),
+        .text_secondary    = lv_color_hex(0xD4BB70),
+        .geo_tint          = lv_color_hex(0xC7A94E),
         .geo_opacity       = 25,
     };
 
-    /* Meeting — Monorail Red
-     * Bold red with dark angular delta feel */
+    /* Meeting — Monorail Red (#E4272C) */
     s_schemes[MODE_MEETING] = (mode_color_scheme_t){
-        .primary           = lv_color_hex(0xEE3322),
-        .primary_dim       = lv_color_hex(0xAA2211),
+        .primary           = lv_color_hex(0xE4272C),
+        .primary_dim       = lv_color_hex(0xA01C20),
         .bg_gradient_start = lv_color_hex(0x1A0808),
-        .bg_gradient_end   = lv_color_hex(0x2D0E0A),
+        .bg_gradient_end   = lv_color_hex(0x2D0E0C),
         .text_primary      = lv_color_hex(0xF0F0F0),
         .text_secondary    = lv_color_hex(0xDD8888),
-        .geo_tint          = lv_color_hex(0xEE3322),
+        .geo_tint          = lv_color_hex(0xE4272C),
         .geo_opacity       = 30,
     };
 
-    /* Away — Monorail Blue (MonorailBlue!)
-     * Bold blue from the actual WDW blue monorail */
+    /* Away — Monorail Blue (#0065C1) (MonorailBlue!) */
     s_schemes[MODE_AWAY] = (mode_color_scheme_t){
-        .primary           = lv_color_hex(0x0088DD),
-        .primary_dim       = lv_color_hex(0x0066AA),
-        .bg_gradient_start = lv_color_hex(0x081018),
-        .bg_gradient_end   = lv_color_hex(0x0C1A2D),
-        .text_primary      = lv_color_hex(0xFFFFFF),
-        .text_secondary    = lv_color_hex(0x77BBEE),
-        .geo_tint          = lv_color_hex(0x0088DD),
+        .primary           = lv_color_hex(0x0065C1),
+        .primary_dim       = lv_color_hex(0x004A8E),
+        .bg_gradient_start = lv_color_hex(0x080E1A),
+        .bg_gradient_end   = lv_color_hex(0x0C182D),
+        .text_primary      = lv_color_hex(0xF0F0F0),
+        .text_secondary    = lv_color_hex(0x77AADD),
+        .geo_tint          = lv_color_hex(0x0065C1),
         .geo_opacity       = 25,
     };
 
     /* Pomodoro — Red (work) → Green (break) */
     s_schemes[MODE_POMODORO] = (mode_color_scheme_t){
-        .primary           = lv_color_hex(0xEE3322),
-        .primary_dim       = lv_color_hex(0xAA2211),
+        .primary           = lv_color_hex(0xE4272C),
+        .primary_dim       = lv_color_hex(0xA01C20),
         .bg_gradient_start = lv_color_hex(0x1A0808),
-        .bg_gradient_end   = lv_color_hex(0x2D0E0A),
+        .bg_gradient_end   = lv_color_hex(0x2D0E0C),
         .text_primary      = lv_color_hex(0xF0F0F0),
         .text_secondary    = lv_color_hex(0xDD8888),
-        .geo_tint          = lv_color_hex(0xEE3322),
+        .geo_tint          = lv_color_hex(0xE4272C),
         .geo_opacity       = 25,
     };
 
-    /* Custom — Monorail Teal (MonorailTeal!)
-     * Vibrant teal from the actual WDW teal monorail */
+    /* Custom — Monorail Teal (#00B5B8) (MonorailTeal!) */
     s_schemes[MODE_CUSTOM] = (mode_color_scheme_t){
-        .primary           = lv_color_hex(0x00BFA5),
-        .primary_dim       = lv_color_hex(0x008C78),
-        .bg_gradient_start = lv_color_hex(0x081A18),
-        .bg_gradient_end   = lv_color_hex(0x0C2D28),
+        .primary           = lv_color_hex(0x00B5B8),
+        .primary_dim       = lv_color_hex(0x008285),
+        .bg_gradient_start = lv_color_hex(0x081A1A),
+        .bg_gradient_end   = lv_color_hex(0x0C2D2D),
         .text_primary      = lv_color_hex(0xF0F0F0),
-        .text_secondary    = lv_color_hex(0x77DDCC),
-        .geo_tint          = lv_color_hex(0x00BFA5),
+        .text_secondary    = lv_color_hex(0x77DDDD),
+        .geo_tint          = lv_color_hex(0x00B5B8),
         .geo_opacity       = 30,
     };
 
-    /* Streaming / On Air — Monorail Silver
-     * Cool neutral silver — clean, professional on-air look */
+    /* Streaming / On Air — Monorail Silver (#A8A9AD) */
     s_schemes[MODE_STREAMING] = (mode_color_scheme_t){
-        .primary           = lv_color_hex(0x8899AA),
-        .primary_dim       = lv_color_hex(0x556677),
-        .bg_gradient_start = lv_color_hex(0x121518),
-        .bg_gradient_end   = lv_color_hex(0x1A2028),
+        .primary           = lv_color_hex(0xA8A9AD),
+        .primary_dim       = lv_color_hex(0x78797D),
+        .bg_gradient_start = lv_color_hex(0x141516),
+        .bg_gradient_end   = lv_color_hex(0x1E2022),
         .text_primary      = lv_color_hex(0xFFFFFF),
-        .text_secondary    = lv_color_hex(0x99AABB),
-        .geo_tint          = lv_color_hex(0x8899AA),
+        .text_secondary    = lv_color_hex(0xBBBBCC),
+        .geo_tint          = lv_color_hex(0xA8A9AD),
         .geo_opacity       = 22,
     };
 
