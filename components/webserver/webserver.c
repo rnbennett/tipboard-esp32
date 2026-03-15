@@ -1,6 +1,7 @@
 #include "webserver.h"
 #include "state.h"
 #include "network.h"
+#include "board.h"
 #include <string.h>
 #include "esp_log.h"
 #include "esp_http_server.h"
@@ -165,6 +166,37 @@ static esp_err_t api_get_version(httpd_req_t *req)
     return send_json_response(req, root);
 }
 
+/* ── PUT /api/brightness ── */
+
+static esp_err_t api_put_brightness(httpd_req_t *req)
+{
+    char buf[64];
+    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (ret <= 0) return ESP_FAIL;
+    buf[ret] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    if (!root) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+
+    cJSON *val = cJSON_GetObjectItem(root, "value");
+    if (val && cJSON_IsNumber(val)) {
+        int brightness = val->valueint;
+        if (brightness < 0) brightness = 0;
+        if (brightness > 100) brightness = 100;
+        board_backlight_set(brightness);
+        ESP_LOGI(TAG, "Brightness set to %d%%", brightness);
+    }
+
+    cJSON_Delete(root);
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    return send_json_response(req, resp);
+}
+
 /* ── WebSocket /ws ── */
 
 #define MAX_WS_CLIENTS 4
@@ -258,6 +290,7 @@ esp_err_t webserver_start(void)
         { .uri = "/api/timer/stop",  .method = HTTP_POST,    .handler = api_timer_stop },
         { .uri = "/api/modes",       .method = HTTP_GET,     .handler = api_get_modes },
         { .uri = "/api/version",     .method = HTTP_GET,     .handler = api_get_version },
+        { .uri = "/api/brightness",  .method = HTTP_PUT,     .handler = api_put_brightness },
         { .uri = "/api/*",           .method = HTTP_OPTIONS, .handler = cors_handler },
     };
 
