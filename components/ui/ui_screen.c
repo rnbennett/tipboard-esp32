@@ -380,6 +380,27 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
     lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 40);
 }
 
+void ui_update_time(const char *time_str, const char *date_str)
+{
+    if (!s_time_label) return;
+
+    if (date_str && date_str[0]) {
+        lv_label_set_text_fmt(s_time_label, "%s . %s", time_str, date_str);
+    } else {
+        lv_label_set_text(s_time_label, time_str);
+    }
+}
+
+void ui_update_wifi_status(const char *ip, bool connected)
+{
+    if (!s_weather_label) return;
+    if (connected && ip[0]) {
+        lv_label_set_text(s_weather_label, ip);
+    } else {
+        lv_label_set_text(s_weather_label, "No WiFi");
+    }
+}
+
 lv_obj_t *ui_get_screen(void)
 {
     return s_screen;

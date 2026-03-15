@@ -5,3 +5,7 @@ dependencies:
     version: "*"
   espressif/esp_lcd_touch_gt911:
     version: "*"
+  espressif/esp_wifi_remote:
+    version: "*"
+  espressif/esp_hosted:
+    version: "*"
