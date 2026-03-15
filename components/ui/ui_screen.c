@@ -47,8 +47,9 @@ static lv_obj_t *s_pomo_label = NULL;
 static lv_obj_t *s_divider_top = NULL;
 static lv_obj_t *s_divider_bottom = NULL;
 
-/* Current mode for change detection */
+/* Current mode/phase for change detection */
 static status_mode_t s_current_mode = MODE_COUNT;
+static pomo_phase_t s_current_pomo_phase = POMO_IDLE;
 
 /* WiFi display toggle */
 static bool s_wifi_show_ip = false;
@@ -352,6 +353,14 @@ void ui_update(const status_state_t *state)
         ui_geodesic_update(scheme->geo_tint, scheme->geo_opacity);
         ui_transition_slide(s_hero, state->mode > s_current_mode);
     }
+
+    /* Celebrate on Pomodoro phase transitions (work→break, break→done) */
+    if (state->mode == MODE_POMODORO && state->pomo_phase != s_current_pomo_phase) {
+        if (s_current_pomo_phase == POMO_WORK || s_current_pomo_phase == POMO_BREAK) {
+            ui_transition_celebrate(s_hero);
+        }
+    }
+    s_current_pomo_phase = state->pomo_phase;
 
     /* Reposition mode label: shift up when timer is visible to make room */
     if (state->mode == MODE_POMODORO && state->pomo_phase != POMO_IDLE) {
