@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 /* Prototype font — the classic 1982 Epcot geometric typeface */
+LV_FONT_DECLARE(font_prototype_120);
 LV_FONT_DECLARE(font_prototype_96);
 LV_FONT_DECLARE(font_prototype_72);
 LV_FONT_DECLARE(font_prototype_48);
@@ -125,7 +126,7 @@ static void create_hero_zone(lv_obj_t *parent)
     /* Mode name — Prototype 72px, the classic Epcot geometric typeface */
     s_mode_label = lv_label_create(s_hero);
     lv_label_set_text(s_mode_label, "AVAILABLE");
-    lv_obj_set_style_text_font(s_mode_label, &font_prototype_96, 0);
+    lv_obj_set_style_text_font(s_mode_label, &font_prototype_120, 0);
     lv_obj_set_style_text_color(s_mode_label, UI_COLOR_TEXT_WHITE, 0);
     lv_obj_set_style_text_letter_space(s_mode_label, 12, 0);
     lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -40);
