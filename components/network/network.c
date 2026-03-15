@@ -174,3 +174,18 @@ esp_err_t network_set_credentials(const char *ssid, const char *password)
 wifi_state_t network_get_state(void) { return s_state; }
 const char *network_get_ip(void) { return s_ip_str; }
 const char *network_get_ssid(void) { return s_ssid; }
+
+int network_get_rssi_percent(void)
+{
+    if (s_state != WIFI_STATE_CONNECTED) return -1;
+
+    wifi_ap_record_t ap_info;
+    if (esp_wifi_sta_get_ap_info(&ap_info) != ESP_OK) return -1;
+
+    /* Convert RSSI to percentage — same formula as ESPHome:
+     * min(max(2 * (rssi + 100), 0), 100) */
+    int pct = 2 * (ap_info.rssi + 100);
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+    return pct;
+}
