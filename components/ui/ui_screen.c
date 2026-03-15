@@ -62,14 +62,14 @@ static void create_top_bar(lv_obj_t *parent)
     lv_obj_set_scrollbar_mode(s_top_bar, LV_SCROLLBAR_MODE_OFF);
     lv_obj_remove_flag(s_top_bar, LV_OBJ_FLAG_SCROLLABLE);
 
-    /* Time/date (left) — placeholder until NTP in Phase 2 */
+    /* Status bar (left) — WiFi + time + date */
     s_time_label = lv_label_create(s_top_bar);
-    lv_label_set_text(s_time_label, "--:--");
+    lv_label_set_text(s_time_label, "No WiFi | --:--");
     lv_obj_set_style_text_color(s_time_label, UI_COLOR_TEXT_DIM, 0);
     lv_obj_set_style_text_font(s_time_label, &font_prototype_20, 0);
     lv_obj_align(s_time_label, LV_ALIGN_LEFT_MID, 0, 0);
 
-    /* Weather (right) — placeholder until Phase 2 */
+    /* Weather (right) — reserved for weather display */
     s_weather_label = lv_label_create(s_top_bar);
     lv_label_set_text(s_weather_label, "");
     lv_obj_set_style_text_color(s_weather_label, UI_COLOR_TEXT_DIM, 0);
@@ -380,25 +380,27 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
     lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 40);
 }
 
+/* Cached WiFi state for building combined status string */
+static bool s_wifi_connected = false;
+
 void ui_update_time(const char *time_str, const char *date_str)
 {
     if (!s_time_label) return;
 
+    /* Format: 📶 100% | 12:00 PM | Sun Mar 15 */
+    const char *wifi_icon = s_wifi_connected ? "WiFi OK" : "No WiFi";
+
     if (date_str && date_str[0]) {
-        lv_label_set_text_fmt(s_time_label, "%s . %s", time_str, date_str);
+        lv_label_set_text_fmt(s_time_label, "%s | %s | %s", wifi_icon, time_str, date_str);
     } else {
-        lv_label_set_text(s_time_label, time_str);
+        lv_label_set_text_fmt(s_time_label, "%s | %s", wifi_icon, time_str);
     }
 }
 
 void ui_update_wifi_status(const char *ip, bool connected)
 {
-    if (!s_weather_label) return;
-    if (connected && ip[0]) {
-        lv_label_set_text(s_weather_label, ip);
-    } else {
-        lv_label_set_text(s_weather_label, "No WiFi");
-    }
+    s_wifi_connected = connected;
+    /* Weather label (right side) stays empty until weather is implemented */
 }
 
 lv_obj_t *ui_get_screen(void)
