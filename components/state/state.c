@@ -35,9 +35,9 @@ static uint8_t source_to_priority(status_source_t source)
     switch (source) {
     case SOURCE_MANUAL:
     case SOURCE_KEYPAD:
-        return 1; /* Highest */
-    case SOURCE_API:
-    case SOURCE_MQTT:
+    case SOURCE_API:    /* Dashboard/API is user-initiated — same priority as touch */
+        return 1;
+    case SOURCE_MQTT:   /* MQTT automation is lower priority */
     default:
         return 2;
     }
