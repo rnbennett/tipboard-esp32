@@ -45,19 +45,29 @@ const char *weather_code_desc(int code)
     }
 }
 
-/* Simple text icons for weather conditions */
+/* FontAwesome weather icon glyphs (merged into font_prototype_20) */
+#define ICON_SUN          "\xEF\x86\x85"   /* U+F185 */
+#define ICON_CLOUD        "\xEF\x83\x82"   /* U+F0C2 */
+#define ICON_CLOUD_SUN    "\xEF\x9B\x84"   /* U+F6C4 */
+#define ICON_CLOUD_RAIN   "\xEF\x9C\xBD"   /* U+F73D */
+#define ICON_SHOWERS      "\xEF\x9D\x80"   /* U+F740 */
+#define ICON_SNOWFLAKE    "\xEF\x8B\x9C"   /* U+F2DC */
+#define ICON_BOLT         "\xEF\x83\xA7"   /* U+F0E7 */
+#define ICON_SMOG         "\xEF\x9D\x9F"   /* U+F75F */
+
 const char *weather_code_icon(int code)
 {
-    if (code == 0) return "CLR";
-    if (code <= 3) return "CLD";
-    if (code <= 48) return "FOG";
-    if (code <= 57) return "DRZ";
-    if (code <= 67) return "RAN";
-    if (code <= 77) return "SNW";
-    if (code <= 82) return "SHR";
-    if (code <= 86) return "SNW";
-    if (code >= 95) return "STM";
-    return "???";
+    if (code == 0) return ICON_SUN;                          /* Clear sky */
+    if (code == 1) return ICON_CLOUD_SUN;                    /* Mostly clear */
+    if (code <= 3) return ICON_CLOUD;                        /* Partly cloudy / Overcast */
+    if (code <= 48) return ICON_SMOG;                        /* Fog */
+    if (code <= 57) return ICON_CLOUD_RAIN;                  /* Drizzle */
+    if (code <= 67) return ICON_CLOUD_RAIN;                  /* Rain / Freezing rain */
+    if (code <= 77) return ICON_SNOWFLAKE;                   /* Snow */
+    if (code <= 82) return ICON_SHOWERS;                     /* Showers */
+    if (code <= 86) return ICON_SNOWFLAKE;                   /* Snow showers */
+    if (code >= 95) return ICON_BOLT;                        /* Thunderstorm */
+    return ICON_CLOUD;
 }
 
 static esp_err_t fetch_weather(void)
