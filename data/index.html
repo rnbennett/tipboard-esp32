@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tipboard</title>
+<style>
+:root {
+  --bg: #0D0B1A;
+  --card: #1A1035;
+  --border: #2A2545;
+  --text: #F0F0F0;
+  --dim: #8888AA;
+  --accent: #00A84E;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 0;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+header h1 {
+  font-size: 20px;
+  letter-spacing: 4px;
+  font-weight: 700;
+}
+#conn-status {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#conn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #EE3322;
+}
+#conn-dot.connected { background: #00A84E; }
+
+.container { max-width: 600px; margin: 0 auto; padding: 16px 20px; }
+
+/* Status card */
+#status-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+#status-stripe {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--accent);
+}
+#status-mode {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  margin-top: 8px;
+}
+#status-subtitle {
+  color: var(--dim);
+  margin-top: 4px;
+  font-size: 14px;
+}
+#status-timer {
+  color: var(--dim);
+  margin-top: 4px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+#status-meta {
+  color: var(--dim);
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+/* Section headers */
+h2 {
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 10px;
+}
+
+/* Mode buttons */
+.section { margin-bottom: 20px; }
+#mode-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mode-btn {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.mode-btn:hover { border-color: var(--dim); }
+.mode-btn.active {
+  border-color: var(--accent);
+  background: rgba(255,255,255,0.05);
+}
+
+/* Mode colors */
+.mode-btn[data-mode="0"] { border-left: 3px solid #00A84E; }
+.mode-btn[data-mode="1"] { border-left: 3px solid #C7A94E; }
+.mode-btn[data-mode="2"] { border-left: 3px solid #E4272C; }
+.mode-btn[data-mode="3"] { border-left: 3px solid #0065C1; }
+.mode-btn[data-mode="4"] { border-left: 3px solid #E4272C; }
+.mode-btn[data-mode="5"] { border-left: 3px solid #00B5B8; }
+.mode-btn[data-mode="6"] { border-left: 3px solid #A8A9AD; }
+
+/* Stripe colors for status card */
+.stripe-0 { background: #00A84E !important; }
+.stripe-1 { background: #C7A94E !important; }
+.stripe-2 { background: #E4272C !important; }
+.stripe-3 { background: #0065C1 !important; }
+.stripe-4 { background: #E4272C !important; }
+.stripe-5 { background: #00B5B8 !important; }
+.stripe-6 { background: #A8A9AD !important; }
+
+/* Input rows */
+.input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+input[type="text"], input[type="number"] {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+}
+input:focus { outline: none; border-color: var(--dim); }
+button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+button:hover { border-color: var(--dim); background: rgba(255,255,255,0.05); }
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+  font-weight: 600;
+}
+button.primary:hover { opacity: 0.9; }
+button.danger { border-color: #E4272C; color: #E4272C; }
+
+/* Timer section */
+.timer-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.timer-row label { font-size: 14px; color: var(--dim); }
+
+/* Brightness slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.brightness-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brightness-row input { flex: 1; }
+#brightness-val { font-size: 14px; min-width: 40px; }
+
+/* Settings collapse */
+.settings-toggle {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-toggle::before { content: '▸'; transition: transform 0.2s; }
+.settings-toggle.open::before { transform: rotate(90deg); }
+#settings-body { display: none; padding-top: 12px; }
+#settings-body.open { display: block; }
+
+@media (max-width: 480px) {
+  .container { padding: 12px; }
+  #status-mode { font-size: 22px; }
+  .mode-btn { padding: 8px 12px; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TIPBOARD</h1>
+  <div id="conn-status">
+    <div id="conn-dot"></div>
+    <span id="conn-text">Disconnected</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Current Status -->
+  <div id="status-card">
+    <div id="status-stripe"></div>
+    <div id="status-mode">--</div>
+    <div id="status-subtitle"></div>
+    <div id="status-timer"></div>
+    <div id="status-meta"></div>
+  </div>
+
+  <!-- Quick Switch -->
+  <div class="section">
+    <h2>Quick Switch</h2>
+    <div id="mode-buttons"></div>
+  </div>
+
+  <!-- Subtitle -->
+  <div class="section">
+    <h2>Subtitle</h2>
+    <div class="input-row">
+      <input type="text" id="subtitle-input" placeholder="Enter subtitle text...">
+      <button onclick="setSubtitle()">Set</button>
+      <button onclick="clearSubtitle()">Clear</button>
+    </div>
+  </div>
+
+  <!-- Timer -->
+  <div class="section">
+    <h2>Timer</h2>
+    <div class="timer-row">
+      <button class="primary" onclick="startPomodoro()">Pomodoro</button>
+      <button onclick="stopTimer()" class="danger">Stop</button>
+      <label>Duration:</label>
+      <input type="number" id="pomo-duration" value="25" style="width:60px;flex:none"> min
+    </div>
+  </div>
+
+  <!-- Brightness -->
+  <div class="section">
+    <h2>Brightness</h2>
+    <div class="brightness-row">
+      <input type="range" id="brightness-slider" min="0" max="100" value="100"
+             oninput="updateBrightness(this.value)">
+      <span id="brightness-val">100%</span>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="section">
+    <h2 class="settings-toggle" onclick="toggleSettings()">Settings</h2>
+    <div id="settings-body">
+      <p style="color:var(--dim);font-size:13px;">
+        WiFi, MQTT, and device settings will be available here in a future update.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const MODES = [
+  {id:0, label:'Available', color:'#00A84E'},
+  {id:1, label:'Focused', color:'#C7A94E'},
+  {id:2, label:'Meeting', color:'#E4272C'},
+  {id:3, label:'Away', color:'#0065C1'},
+  {id:4, label:'Pomodoro', color:'#E4272C'},
+  {id:5, label:'Custom', color:'#00B5B8'},
+  {id:6, label:'On Air', color:'#A8A9AD'},
+];
+
+let ws = null;
+let state = {};
+let reconnectTimer = null;
+
+// --- WebSocket ---
+function connectWS() {
+  const host = location.hostname || 'localhost';
+  ws = new WebSocket(`ws://${host}/ws`);
+
+  ws.onopen = () => {
+    document.getElementById('conn-dot').classList.add('connected');
+    document.getElementById('conn-text').textContent = 'Connected';
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    // Fetch initial state
+    fetch('/api/status').then(r => r.json()).then(updateState);
+  };
+
+  ws.onmessage = (e) => {
+    try { updateState(JSON.parse(e.data)); } catch(err) {}
+  };
+
+  ws.onclose = () => {
+    document.getElementById('conn-dot').classList.remove('connected');
+    document.getElementById('conn-text').textContent = 'Disconnected';
+    reconnectTimer = setTimeout(connectWS, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+// --- State Update ---
+function updateState(s) {
+  state = s;
+  document.getElementById('status-mode').textContent = s.mode;
+  document.getElementById('status-subtitle').textContent = s.subtitle || '';
+  document.getElementById('status-stripe').className = `stripe-${s.mode_id}`;
+
+  // Timer display
+  const timerEl = document.getElementById('status-timer');
+  if (s.timer_type === 2 && s.timer_seconds > 0) {
+    const m = Math.floor(s.timer_seconds / 60);
+    const sec = s.timer_seconds % 60;
+    timerEl.textContent = `${m}:${sec.toString().padStart(2,'0')} remaining`;
+  } else if (s.timer_type === 1 && s.timer_seconds > 0) {
+    const m = Math.floor(s.timer_seconds / 60);
+    const sec = s.timer_seconds % 60;
+    timerEl.textContent = `${m}:${sec.toString().padStart(2,'0')} elapsed`;
+  } else {
+    timerEl.textContent = '';
+  }
+
+  // Meta info
+  const phases = ['', 'Work', 'Break'];
+  let meta = `Source: ${s.source} · Priority: ${s.priority}`;
+  if (s.pomo_phase > 0) meta += ` · Pomodoro: ${phases[s.pomo_phase]}`;
+  document.getElementById('status-meta').textContent = meta;
+
+  // Update active button
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.mode) === s.mode_id);
+  });
+
+  // Update accent color
+  const mode = MODES.find(m => m.id === s.mode_id);
+  if (mode) document.documentElement.style.setProperty('--accent', mode.color);
+}
+
+// --- Mode Buttons ---
+function buildModeButtons() {
+  const container = document.getElementById('mode-buttons');
+  MODES.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'mode-btn';
+    btn.dataset.mode = m.id;
+    btn.textContent = m.label;
+    btn.onclick = () => setMode(m.id);
+    container.appendChild(btn);
+  });
+}
+
+// --- API Calls ---
+async function setMode(id) {
+  const r = await fetch('/api/status', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({mode: id})
+  });
+  updateState(await r.json());
+}
+
+async function setSubtitle() {
+  const text = document.getElementById('subtitle-input').value;
+  const r = await fetch('/api/status', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({subtitle: text})
+  });
+  updateState(await r.json());
+}
+
+async function clearSubtitle() {
+  document.getElementById('subtitle-input').value = '';
+  const r = await fetch('/api/status', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({subtitle: ''})
+  });
+  updateState(await r.json());
+}
+
+async function startPomodoro() {
+  const r = await fetch('/api/timer/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({type: 'pomodoro'})
+  });
+  updateState(await r.json());
+}
+
+async function stopTimer() {
+  const r = await fetch('/api/timer/stop', {method: 'POST'});
+  updateState(await r.json());
+}
+
+let brightnessTimeout = null;
+function updateBrightness(val) {
+  document.getElementById('brightness-val').textContent = val + '%';
+  clearTimeout(brightnessTimeout);
+  brightnessTimeout = setTimeout(() => {
+    fetch('/api/brightness', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({value: parseInt(val)})
+    });
+  }, 200);
+}
+
+function toggleSettings() {
+  const toggle = document.querySelector('.settings-toggle');
+  const body = document.getElementById('settings-body');
+  toggle.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+// --- Init ---
+buildModeButtons();
+connectWS();
+
+// Periodic state refresh (backup for WebSocket)
+setInterval(() => {
+  fetch('/api/status').then(r => r.json()).then(updateState).catch(() => {});
+}, 10000);
+</script>
+
+</body>
+</html>
