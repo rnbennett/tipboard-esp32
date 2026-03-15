@@ -5,9 +5,11 @@
 #include <stdio.h>
 
 /* Prototype font — the classic 1982 Epcot geometric typeface */
+LV_FONT_DECLARE(font_prototype_96);
 LV_FONT_DECLARE(font_prototype_72);
 LV_FONT_DECLARE(font_prototype_48);
 LV_FONT_DECLARE(font_prototype_28);
+LV_FONT_DECLARE(font_prototype_20);
 
 static const char *TAG = "ui_screen";
 
@@ -65,14 +67,14 @@ static void create_top_bar(lv_obj_t *parent)
     s_time_label = lv_label_create(s_top_bar);
     lv_label_set_text(s_time_label, "--:--");
     lv_obj_set_style_text_color(s_time_label, UI_COLOR_TEXT_DIM, 0);
-    lv_obj_set_style_text_font(s_time_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(s_time_label, &font_prototype_20, 0);
     lv_obj_align(s_time_label, LV_ALIGN_LEFT_MID, 0, 0);
 
     /* Weather (right) — placeholder until Phase 2 */
     s_weather_label = lv_label_create(s_top_bar);
     lv_label_set_text(s_weather_label, "");
     lv_obj_set_style_text_color(s_weather_label, UI_COLOR_TEXT_DIM, 0);
-    lv_obj_set_style_text_font(s_weather_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(s_weather_label, &font_prototype_20, 0);
     lv_obj_align(s_weather_label, LV_ALIGN_RIGHT_MID, 0, 0);
 }
 
@@ -112,7 +114,7 @@ static void create_hero_zone(lv_obj_t *parent)
     /* Mode name — Prototype 72px, the classic Epcot geometric typeface */
     s_mode_label = lv_label_create(s_hero);
     lv_label_set_text(s_mode_label, "AVAILABLE");
-    lv_obj_set_style_text_font(s_mode_label, &font_prototype_72, 0);
+    lv_obj_set_style_text_font(s_mode_label, &font_prototype_96, 0);
     lv_obj_set_style_text_color(s_mode_label, UI_COLOR_TEXT_WHITE, 0);
     lv_obj_set_style_text_letter_space(s_mode_label, 12, 0);
     lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -40);
@@ -120,7 +122,7 @@ static void create_hero_zone(lv_obj_t *parent)
     /* Subtitle — Prototype 28px */
     s_subtitle_label = lv_label_create(s_hero);
     lv_label_set_text(s_subtitle_label, "");
-    lv_obj_set_style_text_font(s_subtitle_label, &font_prototype_28, 0);
+    lv_obj_set_style_text_font(s_subtitle_label, &font_prototype_48, 0);
     lv_obj_set_style_text_color(s_subtitle_label, UI_COLOR_TEXT_DIM, 0);
     lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 30);
     lv_obj_add_flag(s_subtitle_label, LV_OBJ_FLAG_HIDDEN);
@@ -152,7 +154,7 @@ static void create_bottom_bar(lv_obj_t *parent)
     s_pomo_label = lv_label_create(s_bottom_bar);
     lv_label_set_text(s_pomo_label, "Tap for Pomodoro (25:00)");
     lv_obj_set_style_text_color(s_pomo_label, UI_COLOR_TEXT_DIM, 0);
-    lv_obj_set_style_text_font(s_pomo_label, &lv_font_montserrat_20, 0);
+    lv_obj_set_style_text_font(s_pomo_label, &font_prototype_20, 0);
     lv_obj_align(s_pomo_label, LV_ALIGN_CENTER, 0, 0);
 
     lv_obj_add_flag(s_bottom_bar, LV_OBJ_FLAG_CLICKABLE);
