@@ -57,6 +57,14 @@ static void wifi_label_tap_cb(lv_event_t *e)
 {
     s_wifi_show_ip = !s_wifi_show_ip;
     ESP_LOGI(TAG, "WiFi display toggled to %s", s_wifi_show_ip ? "IP" : "signal");
+
+    /* Refresh immediately instead of waiting for 30-second timer */
+    char time_str[16], date_str[16];
+    extern void ntp_get_time_str(char *buf, size_t len);
+    extern void ntp_get_date_str(char *buf, size_t len);
+    ntp_get_time_str(time_str, sizeof(time_str));
+    ntp_get_date_str(date_str, sizeof(date_str));
+    ui_update_time(time_str, date_str);
 }
 
 static void create_top_bar(lv_obj_t *parent)
