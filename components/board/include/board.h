@@ -15,7 +15,7 @@
 #define BOARD_TOUCH_I2C_SCL     8
 #define BOARD_TOUCH_INT_GPIO    21
 #define BOARD_TOUCH_RST_GPIO    22
-#define BOARD_TOUCH_I2C_ADDR    0x14
+#define BOARD_TOUCH_I2C_ADDR    0x5D
 #define BOARD_TOUCH_I2C_FREQ    400000
 
 // Display parameters

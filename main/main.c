@@ -27,6 +27,10 @@ static esp_lcd_touch_handle_t s_touch = NULL;
 
 static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
+    if (s_touch == NULL) {
+        data->state = LV_INDEV_STATE_RELEASED;
+        return;
+    }
     esp_lcd_touch_read_data(s_touch);
 
     esp_lcd_touch_point_data_t tp_data[1];
