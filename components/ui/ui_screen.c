@@ -102,7 +102,7 @@ static void create_hero_zone(lv_obj_t *parent)
     lv_obj_set_style_border_width(s_stripe_top, 0, 0);
     lv_obj_set_style_radius(s_stripe_top, 0, 0);
     lv_obj_set_style_outline_color(s_stripe_top, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_outline_width(s_stripe_top, 3, 0);
+    lv_obj_set_style_outline_width(s_stripe_top, 5, 0);
     lv_obj_set_style_outline_pad(s_stripe_top, 0, 0);
     lv_obj_set_style_outline_opa(s_stripe_top, LV_OPA_COVER, 0);
     lv_obj_set_scrollbar_mode(s_stripe_top, LV_SCROLLBAR_MODE_OFF);
@@ -116,7 +116,7 @@ static void create_hero_zone(lv_obj_t *parent)
     lv_obj_set_style_border_width(s_stripe_bottom, 0, 0);
     lv_obj_set_style_radius(s_stripe_bottom, 0, 0);
     lv_obj_set_style_outline_color(s_stripe_bottom, lv_color_hex(0x000000), 0);
-    lv_obj_set_style_outline_width(s_stripe_bottom, 3, 0);
+    lv_obj_set_style_outline_width(s_stripe_bottom, 5, 0);
     lv_obj_set_style_outline_pad(s_stripe_bottom, 0, 0);
     lv_obj_set_style_outline_opa(s_stripe_bottom, LV_OPA_COVER, 0);
     lv_obj_set_scrollbar_mode(s_stripe_bottom, LV_SCROLLBAR_MODE_OFF);
