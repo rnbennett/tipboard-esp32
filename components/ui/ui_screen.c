@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "ui_theme.h"
 #include "ui_internal.h"
+#include "board.h"
 #include "esp_log.h"
 #include <stdio.h>
 #include <string.h>
@@ -8,18 +9,40 @@
 /* Prototype font — the classic 1982 Epcot geometric typeface */
 LV_FONT_DECLARE(font_prototype_120);
 LV_FONT_DECLARE(font_prototype_48);
+LV_FONT_DECLARE(font_prototype_36);
 LV_FONT_DECLARE(font_prototype_20);
+LV_FONT_DECLARE(font_prototype_14);
 
 static const char *TAG = "ui_screen";
 
-/* Screen dimensions */
-#define SCREEN_W  1024
-#define SCREEN_H  600
+/* Screen dimensions from board config */
+#define SCREEN_W  BOARD_DISP_H_RES
+#define SCREEN_H  BOARD_DISP_V_RES
 
-/* Zone heights */
-#define TOP_BAR_H      40
-#define BOTTOM_BAR_H   40
-#define STRIPE_H       32    /* Monorail-style color stripe */
+/* Responsive layout — adapt to screen size */
+#if BOARD_DISP_H_RES >= 1024
+  /* P4: 1024x600 — full layout */
+  #define TOP_BAR_H      40
+  #define BOTTOM_BAR_H   40
+  #define STRIPE_H       32
+  #define FONT_HERO      (&font_prototype_120)
+  #define FONT_SUBTITLE  (&font_prototype_48)
+  #define FONT_TIMER     (&font_prototype_48)
+  #define FONT_BAR       (&font_prototype_20)
+  #define LETTER_SPACE   12
+  #define GEO_RADIUS     140
+#else
+  /* CYD: 320x240 — compact layout */
+  #define TOP_BAR_H      20
+  #define BOTTOM_BAR_H   20
+  #define STRIPE_H       8
+  #define FONT_HERO      (&font_prototype_36)
+  #define FONT_SUBTITLE  (&font_prototype_14)
+  #define FONT_TIMER     (&font_prototype_20)
+  #define FONT_BAR       (&font_prototype_14)
+  #define LETTER_SPACE   4
+  #define GEO_RADIUS     60
+#endif
 #define HERO_H         (SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H)
 
 /* Screen objects */
@@ -90,14 +113,14 @@ static void create_top_bar(lv_obj_t *parent)
     s_time_label = lv_label_create(s_top_bar);
     lv_label_set_text(s_time_label, "--:--");
     lv_obj_set_style_text_color(s_time_label, UI_COLOR_TEXT_DIM, 0);
-    lv_obj_set_style_text_font(s_time_label, &font_prototype_20, 0);
+    lv_obj_set_style_text_font(s_time_label, FONT_BAR, 0);
     lv_obj_align(s_time_label, LV_ALIGN_LEFT_MID, 0, 0);
 
     /* Weather (right) — reserved for weather display */
     s_weather_label = lv_label_create(s_top_bar);
     lv_label_set_text(s_weather_label, "");
     lv_obj_set_style_text_color(s_weather_label, UI_COLOR_TEXT_DIM, 0);
-    lv_obj_set_style_text_font(s_weather_label, &font_prototype_20, 0);
+    lv_obj_set_style_text_font(s_weather_label, FONT_BAR, 0);
     lv_obj_align(s_weather_label, LV_ALIGN_RIGHT_MID, 0, 0);
 
     /* Tap anywhere on top bar to toggle WiFi display (% vs IP) */
@@ -158,15 +181,15 @@ static void create_hero_zone(lv_obj_t *parent)
     /* Mode name — Prototype 72px, the classic Epcot geometric typeface */
     s_mode_label = lv_label_create(s_hero);
     lv_label_set_text(s_mode_label, "AVAILABLE");
-    lv_obj_set_style_text_font(s_mode_label, &font_prototype_120, 0);
+    lv_obj_set_style_text_font(s_mode_label, FONT_HERO, 0);
     lv_obj_set_style_text_color(s_mode_label, UI_COLOR_TEXT_WHITE, 0);
-    lv_obj_set_style_text_letter_space(s_mode_label, 12, 0);
+    lv_obj_set_style_text_letter_space(s_mode_label, LETTER_SPACE, 0);
     lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, 0);
 
     /* Subtitle — Prototype 28px */
     s_subtitle_label = lv_label_create(s_hero);
     lv_label_set_text(s_subtitle_label, "");
-    lv_obj_set_style_text_font(s_subtitle_label, &font_prototype_48, 0);
+    lv_obj_set_style_text_font(s_subtitle_label, FONT_SUBTITLE, 0);
     lv_obj_set_style_text_color(s_subtitle_label, UI_COLOR_TEXT_DIM, 0);
     lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 30);
     lv_obj_add_flag(s_subtitle_label, LV_OBJ_FLAG_HIDDEN);
@@ -174,7 +197,7 @@ static void create_hero_zone(lv_obj_t *parent)
     /* Timer display — Prototype 48, hidden by default (only shown during Pomodoro/countdown) */
     s_timer_label = lv_label_create(s_hero);
     lv_label_set_text(s_timer_label, "");
-    lv_obj_set_style_text_font(s_timer_label, &font_prototype_48, 0);
+    lv_obj_set_style_text_font(s_timer_label, FONT_TIMER, 0);
     lv_obj_set_style_text_color(s_timer_label, UI_COLOR_TEXT_WHITE, 0);
     lv_obj_set_style_text_opa(s_timer_label, LV_OPA_80, 0);
     lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 100);
@@ -199,7 +222,7 @@ static void create_bottom_bar(lv_obj_t *parent)
     s_pomo_label = lv_label_create(s_bottom_bar);
     lv_label_set_text(s_pomo_label, "Tap for Pomodoro (25:00)");
     lv_obj_set_style_text_color(s_pomo_label, UI_COLOR_TEXT_DIM, 0);
-    lv_obj_set_style_text_font(s_pomo_label, &font_prototype_20, 0);
+    lv_obj_set_style_text_font(s_pomo_label, FONT_BAR, 0);
     lv_obj_align(s_pomo_label, LV_ALIGN_CENTER, 0, 0);
 
     lv_obj_add_flag(s_bottom_bar, LV_OBJ_FLAG_CLICKABLE);
