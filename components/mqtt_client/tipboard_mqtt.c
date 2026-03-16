@@ -214,8 +214,14 @@ static void handle_calendar(const char *data, int len)
     if (title_str[0] != '\0') {
         /* Check for UTF-8 lightning bolt (U+26A1 = 0xE2 0x9A 0xA1) or
          * lock symbol (U+1F512) at the start, or "Friday-managed" in text */
-        if (strstr(title_str, "Friday-managed") != NULL ||
-            strstr(title_str, "actually free") != NULL) {
+        /* Filter fake events: start with ⚡ (UTF-8: 0xE2 0x9A 0xA1) or contain Friday-managed */
+        if ((unsigned char)title_str[0] == 0xE2 &&
+            (unsigned char)title_str[1] == 0x9A &&
+            (unsigned char)title_str[2] == 0xA1) {
+            ESP_LOGI(TAG, "Calendar: skipping fake meeting (⚡): %s", title_str);
+            title_str = "";
+        } else if (strstr(title_str, "Friday-managed") != NULL ||
+                   strstr(title_str, "actually free") != NULL) {
             ESP_LOGI(TAG, "Calendar: skipping fake meeting: %s", title_str);
             title_str = "";
         }
