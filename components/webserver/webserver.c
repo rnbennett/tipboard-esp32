@@ -200,6 +200,7 @@ static esp_err_t api_get_config(httpd_req_t *req)
     cJSON_AddStringToObject(root, "weather_lat", cfg->weather_lat);
     cJSON_AddStringToObject(root, "weather_lon", cfg->weather_lon);
     cJSON_AddStringToObject(root, "mqtt_broker", cfg->mqtt_broker);
+    cJSON_AddStringToObject(root, "device_name", cfg->device_name);
 
     return send_json_response(req, root);
 }
@@ -280,6 +281,10 @@ static esp_err_t api_put_config(httpd_req_t *req)
     if ((item = cJSON_GetObjectItem(root, "mqtt_broker")) && cJSON_IsString(item)) {
         strncpy(cfg.mqtt_broker, item->valuestring, sizeof(cfg.mqtt_broker) - 1);
         cfg.mqtt_broker[sizeof(cfg.mqtt_broker) - 1] = '\0';
+    }
+    if ((item = cJSON_GetObjectItem(root, "device_name")) && cJSON_IsString(item)) {
+        strncpy(cfg.device_name, item->valuestring, sizeof(cfg.device_name) - 1);
+        cfg.device_name[sizeof(cfg.device_name) - 1] = '\0';
     }
 
     cJSON_Delete(root);

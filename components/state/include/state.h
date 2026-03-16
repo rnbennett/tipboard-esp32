@@ -123,6 +123,7 @@ typedef struct {
     char weather_lat[16];                 /* Latitude e.g. "0.0000" */
     char weather_lon[16];                 /* Longitude e.g. "0.0000" */
     char mqtt_broker[64];                 /* MQTT broker URI e.g. "mqtt://YOUR_MQTT_BROKER_IP:1883" */
+    char device_name[32];                 /* Hostname + MQTT topic prefix e.g. "tipboard" */
 } device_config_t;
 
 /* Get pointer to device config */

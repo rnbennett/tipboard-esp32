@@ -9,14 +9,28 @@ static const char *TAG = "mqtt";
 
 /* Broker URI fallback if config is empty */
 #define MQTT_BROKER_DEFAULT   ""
-#define TOPIC_STATUS      "tipboard/status"
-#define TOPIC_COMMAND     "tipboard/command"
-#define TOPIC_CALENDAR    "tipboard/calendar"
-#define TOPIC_AVAILABLE   "tipboard/available"
+/* Topics built dynamically from device_name config */
+static char TOPIC_STATUS[64];
+static char TOPIC_COMMAND[64];
+static char TOPIC_CALENDAR[64];
+static char TOPIC_AVAILABLE[64];
+static char HA_SENSOR_CONFIG[96];
+static char HA_SELECT_CONFIG[96];
+static char s_device_name[32] = "tipboard";
 
-/* HA auto-discovery topics */
-#define HA_SENSOR_CONFIG  "homeassistant/sensor/tipboard_status/config"
-#define HA_SELECT_CONFIG  "homeassistant/select/tipboard_mode/config"
+static void build_topics(void)
+{
+    const device_config_t *cfg = config_get();
+    const char *name = (cfg && cfg->device_name[0]) ? cfg->device_name : "tipboard";
+    strncpy(s_device_name, name, sizeof(s_device_name) - 1);
+
+    snprintf(TOPIC_STATUS,    sizeof(TOPIC_STATUS),    "%s/status", name);
+    snprintf(TOPIC_COMMAND,   sizeof(TOPIC_COMMAND),   "%s/command", name);
+    snprintf(TOPIC_CALENDAR,  sizeof(TOPIC_CALENDAR),  "%s/calendar", name);
+    snprintf(TOPIC_AVAILABLE, sizeof(TOPIC_AVAILABLE),  "%s/available", name);
+    snprintf(HA_SENSOR_CONFIG, sizeof(HA_SENSOR_CONFIG), "homeassistant/sensor/%s_status/config", name);
+    snprintf(HA_SELECT_CONFIG, sizeof(HA_SELECT_CONFIG), "homeassistant/select/%s_mode/config", name);
+}
 
 static esp_mqtt_client_handle_t s_client = NULL;
 static bool s_connected = false;
@@ -56,7 +70,7 @@ static void publish_ha_discovery(void)
     cJSON_AddStringToObject(dev, "manufacturer", "DIY");
     cJSON_AddStringToObject(dev, "model", "JC1060P470C ESP32-P4");
     cJSON *ids = cJSON_CreateArray();
-    cJSON_AddItemToArray(ids, cJSON_CreateString("tipboard_01"));
+    cJSON_AddItemToArray(ids, cJSON_CreateString(s_device_name));
     cJSON_AddItemToObject(dev, "identifiers", ids);
     cJSON_AddItemToObject(sensor, "device", dev);
 
@@ -87,7 +101,7 @@ static void publish_ha_discovery(void)
     cJSON_AddStringToObject(dev2, "manufacturer", "DIY");
     cJSON_AddStringToObject(dev2, "model", "JC1060P470C ESP32-P4");
     cJSON *ids2 = cJSON_CreateArray();
-    cJSON_AddItemToArray(ids2, cJSON_CreateString("tipboard_01"));
+    cJSON_AddItemToArray(ids2, cJSON_CreateString(s_device_name));
     cJSON_AddItemToObject(dev2, "identifiers", ids2);
     cJSON_AddItemToObject(sel, "device", dev2);
 
@@ -300,6 +314,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 
 esp_err_t tipboard_mqtt_init(void)
 {
+    build_topics();
+
     const device_config_t *cfg = config_get();
     const char *broker = (cfg && cfg->mqtt_broker[0]) ? cfg->mqtt_broker : MQTT_BROKER_DEFAULT;
     if (!broker[0]) {

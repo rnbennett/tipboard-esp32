@@ -35,6 +35,7 @@ static void set_defaults(void)
     strncpy(s_config.weather_lat, TIPBOARD_WEATHER_LAT, sizeof(s_config.weather_lat) - 1);
     strncpy(s_config.weather_lon, TIPBOARD_WEATHER_LON, sizeof(s_config.weather_lon) - 1);
     strncpy(s_config.mqtt_broker, TIPBOARD_MQTT_BROKER, sizeof(s_config.mqtt_broker) - 1);
+    strncpy(s_config.device_name, "tipboard", sizeof(s_config.device_name) - 1);
 }
 
 static esp_err_t save_config(void)
@@ -60,6 +61,7 @@ static esp_err_t save_config(void)
     cJSON_AddStringToObject(root, "weather_lat", s_config.weather_lat);
     cJSON_AddStringToObject(root, "weather_lon", s_config.weather_lon);
     cJSON_AddStringToObject(root, "mqtt_broker", s_config.mqtt_broker);
+    cJSON_AddStringToObject(root, "device_name", s_config.device_name);
 
     char *str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -135,6 +137,8 @@ static esp_err_t load_config(void)
         strncpy(s_config.weather_lon, item->valuestring, sizeof(s_config.weather_lon) - 1);
     if ((item = cJSON_GetObjectItem(root, "mqtt_broker")) && cJSON_IsString(item))
         strncpy(s_config.mqtt_broker, item->valuestring, sizeof(s_config.mqtt_broker) - 1);
+    if ((item = cJSON_GetObjectItem(root, "device_name")) && cJSON_IsString(item))
+        strncpy(s_config.device_name, item->valuestring, sizeof(s_config.device_name) - 1);
 
     cJSON_Delete(root);
     ESP_LOGI(TAG, "Config loaded");
