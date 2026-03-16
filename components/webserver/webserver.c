@@ -73,9 +73,13 @@ static esp_err_t api_put_status(httpd_req_t *req)
         }
     }
 
+    /* Subtitle: set if provided, clear if not (default subtitle from config will apply) */
     cJSON *subtitle = cJSON_GetObjectItem(root, "subtitle");
     if (subtitle && cJSON_IsString(subtitle)) {
         state_set_subtitle(subtitle->valuestring);
+    } else if (mode) {
+        /* Mode changed without explicit subtitle — clear it so config default applies */
+        state_set_subtitle("");
     }
 
     /* Auto-expire with countdown: {"auto_expire_min": 30} */

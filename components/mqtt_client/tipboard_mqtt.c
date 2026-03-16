@@ -134,10 +134,12 @@ static void handle_command(const char *data, int len)
         }
     }
 
-    /* Subtitle: {"subtitle": "Sprint Planning"} */
+    /* Subtitle: set if provided, clear if mode changed without one */
     cJSON *subtitle = cJSON_GetObjectItem(root, "subtitle");
     if (subtitle && cJSON_IsString(subtitle)) {
         state_set_subtitle(subtitle->valuestring);
+    } else if (mode || mode_name) {
+        state_set_subtitle("");
     }
 
     /* Auto-expire with countdown: {"auto_expire_min": 30} */
