@@ -363,6 +363,13 @@ input[type="range"]::-webkit-slider-thumb {
         <span id="save-status" style="margin-left:8px;font-size:13px;color:var(--dim)"></span>
       </div>
 
+      <h3 style="font-size:12px;color:var(--dim);letter-spacing:1px;margin:24px 0 8px">FIRMWARE UPDATE (OTA)</h3>
+      <div class="input-row">
+        <input type="file" id="ota-file" accept=".bin" style="flex:1;font-size:13px;color:var(--dim)">
+        <button class="danger" onclick="uploadOTA()">Upload & Reboot</button>
+      </div>
+      <div id="ota-progress" style="margin-top:8px;font-size:13px;color:var(--dim)"></div>
+
     </div>
   </div>
 
@@ -618,6 +625,59 @@ async function saveConfig() {
     }
   } catch(e) {
     document.getElementById('save-status').textContent = 'Error saving';
+  }
+}
+
+// --- OTA ---
+async function uploadOTA() {
+  const fileInput = document.getElementById('ota-file');
+  const progress = document.getElementById('ota-progress');
+
+  if (!fileInput.files.length) {
+    progress.textContent = 'Select a .bin file first';
+    return;
+  }
+
+  const file = fileInput.files[0];
+  if (!file.name.endsWith('.bin')) {
+    progress.textContent = 'File must be a .bin firmware image';
+    return;
+  }
+
+  if (!confirm('Upload ' + file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)? Device will reboot after update.')) {
+    return;
+  }
+
+  progress.textContent = 'Uploading... 0%';
+
+  try {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/ota', true);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        progress.textContent = 'Uploading... ' + pct + '%';
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        progress.textContent = 'Success! Rebooting device...';
+        setTimeout(() => { progress.textContent = 'Reconnecting...'; connectWS(); }, 5000);
+      } else {
+        progress.textContent = 'Error: ' + xhr.responseText;
+      }
+    };
+
+    xhr.onerror = () => {
+      progress.textContent = 'Upload failed — check connection';
+    };
+
+    xhr.send(file);
+  } catch(e) {
+    progress.textContent = 'Error: ' + e.message;
   }
 }
 

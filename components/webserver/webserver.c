@@ -5,6 +5,7 @@
 #include <string.h>
 #include "esp_log.h"
 #include "esp_http_server.h"
+#include "esp_ota_ops.h"
 #include "cJSON.h"
 
 static const char *TAG = "webserver";
@@ -374,6 +375,91 @@ void webserver_notify_clients(void)
     cJSON_Delete(json);
 }
 
+/* ── POST /api/ota — firmware update ── */
+
+static esp_err_t api_ota_handler(httpd_req_t *req)
+{
+    esp_ota_handle_t ota_handle = 0;
+    const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+    if (!update_partition) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "OTA: writing to partition '%s' at 0x%lx (%ld bytes incoming)",
+             update_partition->label, update_partition->address, (long)req->content_len);
+
+    esp_err_t err = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &ota_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "OTA begin failed: %s", esp_err_to_name(err));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA begin failed");
+        return ESP_FAIL;
+    }
+
+    char *buf = malloc(4096);
+    if (!buf) {
+        esp_ota_abort(ota_handle);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OOM");
+        return ESP_FAIL;
+    }
+
+    int remaining = req->content_len;
+    int received = 0;
+
+    while (remaining > 0) {
+        int recv_len = httpd_req_recv(req, buf, (remaining < 4096) ? remaining : 4096);
+        if (recv_len <= 0) {
+            if (recv_len == HTTPD_SOCK_ERR_TIMEOUT) continue;
+            ESP_LOGE(TAG, "OTA receive error at %d bytes", received);
+            free(buf);
+            esp_ota_abort(ota_handle);
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Receive failed");
+            return ESP_FAIL;
+        }
+
+        err = esp_ota_write(ota_handle, buf, recv_len);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "OTA write failed: %s", esp_err_to_name(err));
+            free(buf);
+            esp_ota_abort(ota_handle);
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Write failed");
+            return ESP_FAIL;
+        }
+
+        remaining -= recv_len;
+        received += recv_len;
+    }
+
+    free(buf);
+
+    err = esp_ota_end(ota_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "OTA end failed: %s", esp_err_to_name(err));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Validation failed");
+        return ESP_FAIL;
+    }
+
+    err = esp_ota_set_boot_partition(update_partition);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "OTA set boot partition failed: %s", esp_err_to_name(err));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Set boot failed");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "OTA: success! Rebooting in 2 seconds...");
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    cJSON_AddStringToObject(resp, "message", "Firmware updated. Rebooting...");
+    send_json_response(req, resp);
+
+    /* Delay then reboot */
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    esp_restart();
+
+    return ESP_OK; /* never reached */
+}
+
 /* ── GET / — serve web dashboard ── */
 
 extern const uint8_t index_html_start[] asm("_binary_index_html_start");
@@ -422,6 +508,7 @@ esp_err_t webserver_start(void)
         { .uri = "/api/config",      .method = HTTP_GET,     .handler = api_get_config },
         { .uri = "/api/config",      .method = HTTP_PUT,     .handler = api_put_config },
         { .uri = "/api/brightness",  .method = HTTP_PUT,     .handler = api_put_brightness },
+        { .uri = "/api/ota",         .method = HTTP_POST,    .handler = api_ota_handler },
         { .uri = "/api/*",           .method = HTTP_OPTIONS, .handler = cors_handler },
     };
 
