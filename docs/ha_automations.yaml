@@ -23,7 +23,7 @@
         retain: true
         payload: >-
           {% set all_events = events['calendar.YOUR_CALENDAR_ENTITY']['events'] %}
-          {% set real = all_events | rejectattr('summary', 'search', 'Friday-managed') | rejectattr('summary', 'search', 'actually free') | list %}
+          {% set real = all_events | rejectattr('summary', 'match', '⚡') | list %}
           {% if real | length > 0 %}
             {% set e = real[0] %}
             {"title": "{{ e.summary }}", "start": "{{ e.start }}", "end": "{{ e.end }}"}
@@ -39,12 +39,8 @@
       event: start
       entity_id: calendar.YOUR_CALENDAR_ENTITY
   condition:
-    - condition: not
-      conditions:
-        - condition: template
-          value_template: "{{ 'Friday-managed' in trigger.calendar_event.summary }}"
-        - condition: template
-          value_template: "{{ 'actually free' in trigger.calendar_event.summary }}"
+    - condition: template
+      value_template: "{{ not trigger.calendar_event.summary.startswith('⚡') }}"
   action:
     - service: mqtt.publish
       data:
@@ -61,10 +57,8 @@
       event: end
       entity_id: calendar.YOUR_CALENDAR_ENTITY
   condition:
-    - condition: not
-      conditions:
-        - condition: template
-          value_template: "{{ 'Friday-managed' in trigger.calendar_event.summary }}"
+    - condition: template
+      value_template: "{{ not trigger.calendar_event.summary.startswith('⚡') }}"
   action:
     - service: mqtt.publish
       data:
