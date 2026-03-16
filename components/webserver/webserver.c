@@ -78,6 +78,14 @@ static esp_err_t api_put_status(httpd_req_t *req)
         state_set_subtitle(subtitle->valuestring);
     }
 
+    /* Auto-expire with countdown: {"auto_expire_min": 30} */
+    cJSON *expire = cJSON_GetObjectItem(root, "auto_expire_min");
+    if (expire && cJSON_IsNumber(expire) && expire->valueint > 0) {
+        int secs = expire->valueint * 60;
+        state_timer_start_countdown(secs);
+        state_set_auto_expire(secs, state_get_default_mode());
+    }
+
     cJSON_Delete(root);
 
     const status_state_t *state = state_get();

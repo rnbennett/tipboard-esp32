@@ -366,14 +366,13 @@ void ui_update(const status_state_t *state)
                       state_timer_get_seconds() > 0);
 
     if (has_subtitle && has_timer) {
-        /* Meeting with subtitle + countdown: shift up more */
-        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -60);
-        lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 10);
+        /* Meeting with subtitle + countdown */
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -80);
+        lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 20);
     } else if (has_subtitle) {
-        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -30);
-        lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 30);
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -50);
+        lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 40);
     } else if (has_timer) {
-        /* Pomodoro: mode up, timer below */
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -50);
     } else {
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, 0);
@@ -437,9 +436,8 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
     } else {
         /* Meeting/other countdown: just text, no arc */
         ui_timer_arc_update(0, lv_color_black(), false);
-        /* Position below subtitle if present */
         bool has_sub = (state->subtitle[0] != '\0');
-        lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, has_sub ? 50 : 40);
+        lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, has_sub ? 70 : 40);
     }
 }
 

@@ -103,15 +103,18 @@ esp_err_t state_set_mode(status_mode_t mode, status_source_t source)
         s_state.pomo_phase = POMO_IDLE;
     }
 
-    s_state.mode = mode;
-    s_state.source = source;
-    s_state.priority = incoming_priority;
-
-    /* Clear auto-expire when manually switching */
-    if (source == SOURCE_MANUAL || source == SOURCE_KEYPAD) {
+    /* If switching away from a timed mode, clear the timer */
+    if (s_state.mode != mode) {
+        s_state.timer_type = TIMER_NONE;
+        s_state.timer_started_at = 0;
+        s_state.timer_duration_sec = 0;
         s_state.auto_expire_enabled = false;
         s_state.auto_expire_at = 0;
     }
+
+    s_state.mode = mode;
+    s_state.source = source;
+    s_state.priority = incoming_priority;
 
     ESP_LOGI(TAG, "Mode changed to %s (source=%d, priority=%d)",
              MODE_LABELS[mode], source, incoming_priority);
