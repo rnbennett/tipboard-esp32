@@ -1,5 +1,6 @@
 # Tipboard Calendar Automations
 # Add these to your Home Assistant automations.yaml or create via UI
+# Calendar entity: calendar.YOUR_CALENDAR_ENTITY
 
 # 1. Publish next calendar event to MQTT every 5 minutes
 - alias: "Tipboard: Publish Next Calendar Event"
@@ -11,7 +12,7 @@
   action:
     - service: calendar.get_events
       target:
-        entity_id: calendar.centegix_calendar
+        entity_id: calendar.YOUR_CALENDAR_ENTITY
       data:
         duration:
           hours: 8
@@ -21,9 +22,10 @@
         topic: tipboard/calendar
         retain: true
         payload: >-
-          {% set items = events['calendar.centegix_calendar']['events'] %}
-          {% if items | length > 0 %}
-            {% set e = items[0] %}
+          {% set all_events = events['calendar.YOUR_CALENDAR_ENTITY']['events'] %}
+          {% set real = all_events | rejectattr('summary', 'search', 'Friday-managed') | rejectattr('summary', 'search', 'actually free') | list %}
+          {% if real | length > 0 %}
+            {% set e = real[0] %}
             {"title": "{{ e.summary }}", "start": "{{ e.start }}", "end": "{{ e.end }}"}
           {% else %}
             {"title": "", "start": "", "end": ""}
@@ -35,7 +37,7 @@
   trigger:
     - platform: calendar
       event: start
-      entity_id: calendar.centegix_calendar
+      entity_id: calendar.YOUR_CALENDAR_ENTITY
   condition:
     - condition: not
       conditions:
@@ -53,12 +55,11 @@
            "auto_expire_min": {{ ((as_timestamp(trigger.calendar_event.end) - now().timestamp()) / 60) | int }}}
 
 # 3. Revert from Meeting mode when calendar event ends
-#    (only if currently in Meeting mode — don't override manual status)
 - alias: "Tipboard: Meeting Auto-Revert"
   trigger:
     - platform: calendar
       event: end
-      entity_id: calendar.centegix_calendar
+      entity_id: calendar.YOUR_CALENDAR_ENTITY
   condition:
     - condition: not
       conditions:
@@ -68,4 +69,4 @@
     - service: mqtt.publish
       data:
         topic: tipboard/command
-        payload: '{"mode": 0, "subtitle": ""}'
+        payload: '{"mode": 0}'
