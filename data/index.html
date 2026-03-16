@@ -360,6 +360,9 @@ input[type="range"]::-webkit-slider-thumb {
 
       <h3 style="font-size:12px;color:var(--dim);letter-spacing:1px;margin:16px 0 8px">NETWORK</h3>
       <div class="settings-grid">
+        <label>Device name (hostname):</label>
+        <input type="text" id="cfg-device-name" value="tipboard" style="width:150px">
+
         <label>Timezone (POSIX):</label>
         <input type="text" id="cfg-timezone" value="EST5EDT,M3.2.0,M11.1.0" style="width:200px">
 
@@ -614,6 +617,7 @@ async function loadConfig() {
     document.getElementById('cfg-weather-lat').value = cfg.weather_lat || '0.0000';
     document.getElementById('cfg-weather-lon').value = cfg.weather_lon || '0.0000';
     document.getElementById('cfg-mqtt-broker').value = cfg.mqtt_broker || 'mqtt://YOUR_MQTT_BROKER_IP:1883';
+    document.getElementById('cfg-device-name').value = cfg.device_name || 'tipboard';
   } catch(e) {
     console.error('Failed to load config', e);
   }
@@ -641,6 +645,7 @@ async function saveConfig() {
     weather_lat: document.getElementById('cfg-weather-lat').value,
     weather_lon: document.getElementById('cfg-weather-lon').value,
     mqtt_broker: document.getElementById('cfg-mqtt-broker').value,
+    device_name: document.getElementById('cfg-device-name').value,
   };
 
   try {

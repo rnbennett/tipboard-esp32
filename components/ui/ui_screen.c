@@ -454,10 +454,12 @@ void ui_update_time(const char *time_str, const char *date_str)
     if (!s_time_label) return;
 
     /* Build WiFi suffix */
-    char wifi_str[32];
+    char wifi_str[64];
     if (s_wifi_connected) {
         if (s_wifi_show_ip && s_wifi_ip[0]) {
-            snprintf(wifi_str, sizeof(wifi_str), WIFI_ICON " %s", s_wifi_ip);
+            const device_config_t *cfg = config_get();
+            const char *hostname = (cfg && cfg->device_name[0]) ? cfg->device_name : "tipboard";
+            snprintf(wifi_str, sizeof(wifi_str), WIFI_ICON " %s (%s)", hostname, s_wifi_ip);
         } else {
             snprintf(wifi_str, sizeof(wifi_str), WIFI_ICON " %d%%",
                      s_wifi_rssi_pct >= 0 ? s_wifi_rssi_pct : 0);
