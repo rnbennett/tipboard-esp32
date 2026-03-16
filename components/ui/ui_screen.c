@@ -230,6 +230,10 @@ static void create_dividers(lv_obj_t *parent)
 
 static void hero_tap_cb(lv_event_t *e)
 {
+    /* Mirror mode: no touch interaction */
+    const device_config_t *cfg = config_get();
+    if (cfg && cfg->mirror_mode) return;
+
     const status_state_t *state = state_get();
     status_mode_t next = (state->mode + 1) % MODE_COUNT;
 
@@ -243,6 +247,9 @@ static void hero_tap_cb(lv_event_t *e)
 
 static void hero_gesture_cb(lv_event_t *e)
 {
+    const device_config_t *cfg = config_get();
+    if (cfg && cfg->mirror_mode) return;
+
     lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_active());
     const status_state_t *state = state_get();
     status_mode_t next;
@@ -267,6 +274,9 @@ static void hero_longpress_cb(lv_event_t *e)
 
 static void bottom_bar_tap_cb(lv_event_t *e)
 {
+    const device_config_t *cfg = config_get();
+    if (cfg && cfg->mirror_mode) return;
+
     const status_state_t *state = state_get();
     if (state->mode == MODE_POMODORO) {
         state_pomodoro_cancel();

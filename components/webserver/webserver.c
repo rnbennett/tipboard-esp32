@@ -201,6 +201,8 @@ static esp_err_t api_get_config(httpd_req_t *req)
     cJSON_AddStringToObject(root, "weather_lon", cfg->weather_lon);
     cJSON_AddStringToObject(root, "mqtt_broker", cfg->mqtt_broker);
     cJSON_AddStringToObject(root, "device_name", cfg->device_name);
+    cJSON_AddNumberToObject(root, "mirror_mode", cfg->mirror_mode);
+    cJSON_AddStringToObject(root, "mirror_source", cfg->mirror_source);
 
     return send_json_response(req, root);
 }
@@ -285,6 +287,12 @@ static esp_err_t api_put_config(httpd_req_t *req)
     if ((item = cJSON_GetObjectItem(root, "device_name")) && cJSON_IsString(item)) {
         strncpy(cfg.device_name, item->valuestring, sizeof(cfg.device_name) - 1);
         cfg.device_name[sizeof(cfg.device_name) - 1] = '\0';
+    }
+    if ((item = cJSON_GetObjectItem(root, "mirror_mode")) && cJSON_IsNumber(item))
+        cfg.mirror_mode = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "mirror_source")) && cJSON_IsString(item)) {
+        strncpy(cfg.mirror_source, item->valuestring, sizeof(cfg.mirror_source) - 1);
+        cfg.mirror_source[sizeof(cfg.mirror_source) - 1] = '\0';
     }
 
     cJSON_Delete(root);

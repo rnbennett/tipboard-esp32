@@ -9,6 +9,49 @@ static const char *TAG = "mqtt";
 
 /* Broker URI fallback if config is empty */
 #define MQTT_BROKER_DEFAULT   ""
+/* Mirror mode topic — subscribes to primary's status */
+static char MIRROR_STATUS_TOPIC[64];
+static bool s_mirror_mode = false;
+
+/* Handle incoming mirror status — apply primary's state to our display */
+static void handle_mirror_status(const char *data, int len)
+{
+    char *buf = malloc(len + 1);
+    if (!buf) return;
+    memcpy(buf, data, len);
+    buf[len] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    free(buf);
+    if (!root) return;
+
+    cJSON *mode_id = cJSON_GetObjectItem(root, "mode_id");
+    cJSON *subtitle = cJSON_GetObjectItem(root, "subtitle");
+    cJSON *timer_type = cJSON_GetObjectItem(root, "timer_type");
+    cJSON *timer_seconds = cJSON_GetObjectItem(root, "timer_seconds");
+    cJSON *pomo_phase = cJSON_GetObjectItem(root, "pomo_phase");
+
+    if (mode_id && cJSON_IsNumber(mode_id)) {
+        int id = mode_id->valueint;
+        if (id >= 0 && id < MODE_COUNT) {
+            state_set_mode((status_mode_t)id, SOURCE_MQTT);
+        }
+    }
+    if (subtitle && cJSON_IsString(subtitle)) {
+        state_set_subtitle(subtitle->valuestring);
+    }
+    /* For countdown timers, start a local countdown matching the primary */
+    if (timer_type && cJSON_IsNumber(timer_type) && timer_type->valueint == 2 &&
+        timer_seconds && cJSON_IsNumber(timer_seconds) && timer_seconds->valueint > 0) {
+        state_timer_start_countdown(timer_seconds->valueint);
+    } else if (timer_type && timer_type->valueint == 0) {
+        state_timer_stop();
+    }
+
+    cJSON_Delete(root);
+    ESP_LOGD(TAG, "Mirror: applied primary state");
+}
+
 /* Topics built dynamically from device_name config */
 static char TOPIC_STATUS[64];
 static char TOPIC_COMMAND[64];
@@ -23,6 +66,12 @@ static void build_topics(void)
     const device_config_t *cfg = config_get();
     const char *name = (cfg && cfg->device_name[0]) ? cfg->device_name : "tipboard";
     strncpy(s_device_name, name, sizeof(s_device_name) - 1);
+
+    s_mirror_mode = (cfg && cfg->mirror_mode);
+    if (s_mirror_mode && cfg->mirror_source[0]) {
+        snprintf(MIRROR_STATUS_TOPIC, sizeof(MIRROR_STATUS_TOPIC), "%s/status", cfg->mirror_source);
+        ESP_LOGI(TAG, "Mirror mode: following %s", cfg->mirror_source);
+    }
 
     snprintf(TOPIC_STATUS,    sizeof(TOPIC_STATUS),    "%s/status", name);
     snprintf(TOPIC_COMMAND,   sizeof(TOPIC_COMMAND),   "%s/command", name);
@@ -272,18 +321,18 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
         ESP_LOGI(TAG, "MQTT connected to broker");
         s_connected = true;
 
-        /* Publish online status */
-        esp_mqtt_client_publish(s_client, TOPIC_AVAILABLE, "online", 0, 1, 1);
-
-        /* Subscribe to command and calendar topics */
-        esp_mqtt_client_subscribe(s_client, TOPIC_COMMAND, 1);
-        esp_mqtt_client_subscribe(s_client, TOPIC_CALENDAR, 1);
-
-        /* Publish HA auto-discovery */
-        publish_ha_discovery();
-
-        /* Publish current state */
-        tipboard_mqtt_publish_state();
+        if (s_mirror_mode) {
+            /* Mirror: subscribe to primary's status topic */
+            esp_mqtt_client_subscribe(s_client, MIRROR_STATUS_TOPIC, 1);
+            ESP_LOGI(TAG, "Mirror: subscribed to %s", MIRROR_STATUS_TOPIC);
+        } else {
+            /* Primary: full setup */
+            esp_mqtt_client_publish(s_client, TOPIC_AVAILABLE, "online", 0, 1, 1);
+            esp_mqtt_client_subscribe(s_client, TOPIC_COMMAND, 1);
+            esp_mqtt_client_subscribe(s_client, TOPIC_CALENDAR, 1);
+            publish_ha_discovery();
+            tipboard_mqtt_publish_state();
+        }
         break;
 
     case MQTT_EVENT_DISCONNECTED:
@@ -293,7 +342,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 
     case MQTT_EVENT_DATA:
         if (event->topic_len > 0) {
-            if (strncmp(event->topic, TOPIC_COMMAND, event->topic_len) == 0) {
+            if (s_mirror_mode &&
+                strncmp(event->topic, MIRROR_STATUS_TOPIC, event->topic_len) == 0) {
+                handle_mirror_status(event->data, event->data_len);
+            } else if (strncmp(event->topic, TOPIC_COMMAND, event->topic_len) == 0) {
                 handle_command(event->data, event->data_len);
             } else if (strncmp(event->topic, TOPIC_CALENDAR, event->topic_len) == 0) {
                 handle_calendar(event->data, event->data_len);
@@ -350,7 +402,7 @@ esp_err_t tipboard_mqtt_init(void)
 
 void tipboard_mqtt_publish_state(void)
 {
-    if (!s_connected || !s_client) return;
+    if (!s_connected || !s_client || s_mirror_mode) return;
 
     char *json = state_to_json_str();
     if (json) {

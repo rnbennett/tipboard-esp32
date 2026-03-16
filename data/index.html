@@ -376,6 +376,19 @@ input[type="range"]::-webkit-slider-thumb {
         <input type="text" id="cfg-mqtt-broker" value="mqtt://YOUR_MQTT_BROKER_IP:1883" style="width:200px">
       </div>
 
+      <h3 style="font-size:12px;color:var(--dim);letter-spacing:1px;margin:16px 0 8px">MIRROR MODE</h3>
+      <div class="settings-grid">
+        <label>Device role:</label>
+        <select id="cfg-mirror-mode">
+          <option value="0">Primary</option>
+          <option value="1">Mirror (read-only)</option>
+        </select>
+
+        <label>Mirror source (primary device name):</label>
+        <input type="text" id="cfg-mirror-source" placeholder="e.g. tipboard" style="width:150px">
+      </div>
+      <p style="color:var(--dim);font-size:12px;margin-top:4px;">Mirror mode subscribes to the primary's MQTT status and displays it. Touch input is disabled. Requires reboot after changing.</p>
+
       <h3 style="font-size:12px;color:var(--dim);letter-spacing:1px;margin:16px 0 8px">WIFI</h3>
       <div class="settings-grid">
         <label>New WiFi SSID:</label>
@@ -618,6 +631,8 @@ async function loadConfig() {
     document.getElementById('cfg-weather-lon').value = cfg.weather_lon || '0.0000';
     document.getElementById('cfg-mqtt-broker').value = cfg.mqtt_broker || 'mqtt://YOUR_MQTT_BROKER_IP:1883';
     document.getElementById('cfg-device-name').value = cfg.device_name || 'tipboard';
+    document.getElementById('cfg-mirror-mode').value = cfg.mirror_mode || 0;
+    document.getElementById('cfg-mirror-source').value = cfg.mirror_source || '';
   } catch(e) {
     console.error('Failed to load config', e);
   }
@@ -646,6 +661,8 @@ async function saveConfig() {
     weather_lon: document.getElementById('cfg-weather-lon').value,
     mqtt_broker: document.getElementById('cfg-mqtt-broker').value,
     device_name: document.getElementById('cfg-device-name').value,
+    mirror_mode: parseInt(document.getElementById('cfg-mirror-mode').value),
+    mirror_source: document.getElementById('cfg-mirror-source').value,
   };
 
   try {
