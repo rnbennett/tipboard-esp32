@@ -1,51 +1,62 @@
 # Tipboard Stream Deck Setup
 
-## Plugin
-Install **API Monkey** from the Elgato Marketplace (Mac + Windows).
-https://marketplace.elgato.com/product/api-monkey-754d958d-1c8e-4734-bbc3-b01ab914e3bb
+## Setup Method: macOS Shortcuts + Stream Deck
 
-## Button Configuration
+1. Open **Shortcuts** app
+2. Create a new shortcut for each button
+3. Add action: **Run Shell Script**
+4. Paste the curl command from the tables below
+5. In Stream Deck, drag **Shortcuts** action → select the shortcut
 
-For each button, add an "API Monkey" action with these settings:
+## Setup Method: Windows Scripts + Stream Deck
+
+1. Create a `.bat` file for each button (save to a folder like `C:\tipboard-buttons\`)
+2. In Stream Deck, drag **System > Open** action → point to the `.bat` file
+
+## Button Commands
 
 ### Mode Buttons
 
-| Button | Method | URL | Body |
-|--------|--------|-----|------|
-| Available | PUT | `http://10.0.0.30/api/status` | `{"mode":0}` |
-| Focused | PUT | `http://10.0.0.30/api/status` | `{"mode":1}` |
-| In a Meeting | PUT | `http://10.0.0.30/api/status` | `{"mode":2}` |
-| Away | PUT | `http://10.0.0.30/api/status` | `{"mode":3}` |
-| Custom | PUT | `http://10.0.0.30/api/status` | `{"mode":5}` |
-| On Air | PUT | `http://10.0.0.30/api/status` | `{"mode":6}` |
-
-All mode buttons:
-- **Content Type:** `application/json`
-- **Method:** PUT
+| Button | Mac (curl) | Windows (.bat) |
+|--------|-----------|----------------|
+| Available | `curl -s -X PUT http://10.0.0.30/api/status -H "Content-Type: application/json" -d '{"mode":0}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/status -Method Put -ContentType 'application/json' -Body '{\"mode\":0}'"` |
+| Focused | `curl -s -X PUT http://10.0.0.30/api/status -H "Content-Type: application/json" -d '{"mode":1}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/status -Method Put -ContentType 'application/json' -Body '{\"mode\":1}'"` |
+| Meeting | `curl -s -X PUT http://10.0.0.30/api/status -H "Content-Type: application/json" -d '{"mode":2}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/status -Method Put -ContentType 'application/json' -Body '{\"mode\":2}'"` |
+| Away | `curl -s -X PUT http://10.0.0.30/api/status -H "Content-Type: application/json" -d '{"mode":3}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/status -Method Put -ContentType 'application/json' -Body '{\"mode\":3}'"` |
+| Custom | `curl -s -X PUT http://10.0.0.30/api/status -H "Content-Type: application/json" -d '{"mode":5}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/status -Method Put -ContentType 'application/json' -Body '{\"mode\":5}'"` |
+| On Air | `curl -s -X PUT http://10.0.0.30/api/status -H "Content-Type: application/json" -d '{"mode":6}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/status -Method Put -ContentType 'application/json' -Body '{\"mode\":6}'"` |
 
 ### Timer Buttons
 
-| Button | Method | URL | Body |
-|--------|--------|-----|------|
-| Pomodoro (25 min) | POST | `http://10.0.0.30/api/timer/start` | `{"type":"pomodoro","work_min":25}` |
-| Pomodoro (10 min) | POST | `http://10.0.0.30/api/timer/start` | `{"type":"pomodoro","work_min":10}` |
-| Stop Timer | POST | `http://10.0.0.30/api/timer/stop` | (empty) |
+| Button | Mac (curl) | Windows (.bat) |
+|--------|-----------|----------------|
+| Pomodoro 25m | `curl -s -X POST http://10.0.0.30/api/timer/start -H "Content-Type: application/json" -d '{"type":"pomodoro","work_min":25}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/timer/start -Method Post -ContentType 'application/json' -Body '{\"type\":\"pomodoro\",\"work_min\":25}'"` |
+| Stop Timer | `curl -s -X POST http://10.0.0.30/api/timer/stop` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/timer/stop -Method Post"` |
 
 ### Utility Buttons
 
-| Button | Method | URL | Body |
-|--------|--------|-----|------|
-| Brightness 100% | PUT | `http://10.0.0.30/api/brightness` | `{"value":100}` |
-| Brightness 50% | PUT | `http://10.0.0.30/api/brightness` | `{"value":50}` |
-| Brightness 10% | PUT | `http://10.0.0.30/api/brightness` | `{"value":10}` |
+| Button | Mac (curl) | Windows (.bat) |
+|--------|-----------|----------------|
+| Bright 100% | `curl -s -X PUT http://10.0.0.30/api/brightness -H "Content-Type: application/json" -d '{"value":100}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/brightness -Method Put -ContentType 'application/json' -Body '{\"value\":100}'"` |
+| Bright 50% | `curl -s -X PUT http://10.0.0.30/api/brightness -H "Content-Type: application/json" -d '{"value":50}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/brightness -Method Put -ContentType 'application/json' -Body '{\"value\":50}'"` |
 
-### Custom Subtitle Button
+### Custom Subtitle Buttons
 
-| Button | Method | URL | Body |
-|--------|--------|-----|------|
-| Deep Work | PUT | `http://10.0.0.30/api/status` | `{"mode":1,"subtitle":"Deep Work Session"}` |
-| Lunch | PUT | `http://10.0.0.30/api/status` | `{"mode":3,"subtitle":"Out to Lunch"}` |
-| Streaming | PUT | `http://10.0.0.30/api/status` | `{"mode":6,"subtitle":"Live on Twitch"}` |
+| Button | Mac (curl) | Windows (.bat) |
+|--------|-----------|----------------|
+| Deep Work | `curl -s -X PUT http://10.0.0.30/api/status -H "Content-Type: application/json" -d '{"mode":1,"subtitle":"Deep Work Session"}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/status -Method Put -ContentType 'application/json' -Body '{\"mode\":1,\"subtitle\":\"Deep Work Session\"}'"` |
+| Lunch | `curl -s -X PUT http://10.0.0.30/api/status -H "Content-Type: application/json" -d '{"mode":3,"subtitle":"Out to Lunch"}'` | `powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/status -Method Put -ContentType 'application/json' -Body '{\"mode\":3,\"subtitle\":\"Out to Lunch\"}'"` |
+
+### Windows .bat File Template
+
+Save each as a `.bat` file (e.g., `available.bat`):
+
+```bat
+@echo off
+powershell -WindowStyle Hidden -Command "Invoke-RestMethod -Uri http://10.0.0.30/api/status -Method Put -ContentType 'application/json' -Body '{\"mode\":0}'"
+```
+
+Then in Stream Deck: **System > Open** → browse to the `.bat` file.
 
 ## Button Icons
 
