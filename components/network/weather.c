@@ -67,8 +67,8 @@ const char *weather_code_icon(int code)
 static esp_err_t fetch_weather(void)
 {
     const device_config_t *cfg = config_get();
-    const char *lat = (cfg && cfg->weather_lat[0]) ? cfg->weather_lat : "0.0000";
-    const char *lon = (cfg && cfg->weather_lon[0]) ? cfg->weather_lon : "0.0000";
+    const char *lat = (cfg && cfg->weather_lat[0]) ? cfg->weather_lat : "0";
+    const char *lon = (cfg && cfg->weather_lon[0]) ? cfg->weather_lon : "0";
 
     char url[256];
     snprintf(url, sizeof(url),
