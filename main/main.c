@@ -198,8 +198,10 @@ void app_main(void)
     /* ── Network init (WiFi + NTP) ── */
     ESP_ERROR_CHECK(network_init());
 
-    /* WiFi credentials stored in NVS — configured via AP mode captive portal
-     * on first boot, or via dashboard settings. No hardcoded credentials. */
+    /* Seed WiFi credentials from .env if provided (idempotent — safe to call every boot) */
+    if (TIPBOARD_WIFI_SSID[0]) {
+        network_set_credentials(TIPBOARD_WIFI_SSID, TIPBOARD_WIFI_PASS);
+    }
     network_wifi_connect();
     ntp_init();
 

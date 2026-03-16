@@ -11,6 +11,9 @@ managed_components/
 .vscode/
 .idea/
 
+# Credentials
+.env
+
 # OS
 .DS_Store
 Thumbs.db
