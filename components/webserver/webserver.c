@@ -169,6 +169,103 @@ static esp_err_t api_get_modes(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* ── GET /api/config ── */
+
+static esp_err_t api_get_config(httpd_req_t *req)
+{
+    const device_config_t *cfg = config_get();
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON *labels = cJSON_CreateArray();
+    cJSON *subs = cJSON_CreateArray();
+    for (int i = 0; i < MODE_COUNT; i++) {
+        cJSON_AddItemToArray(labels, cJSON_CreateString(cfg->mode_labels[i]));
+        cJSON_AddItemToArray(subs, cJSON_CreateString(cfg->mode_subtitles[i]));
+    }
+    cJSON_AddItemToObject(root, "mode_labels", labels);
+    cJSON_AddItemToObject(root, "mode_subtitles", subs);
+    cJSON_AddNumberToObject(root, "default_mode", cfg->default_mode);
+    cJSON_AddNumberToObject(root, "pomo_work_min", cfg->pomo_work_min);
+    cJSON_AddNumberToObject(root, "pomo_break_min", cfg->pomo_break_min);
+    cJSON_AddNumberToObject(root, "brightness", cfg->brightness);
+    cJSON_AddNumberToObject(root, "dim_brightness", cfg->dim_brightness);
+    cJSON_AddNumberToObject(root, "dim_start_hour", cfg->dim_start_hour);
+    cJSON_AddNumberToObject(root, "dim_end_hour", cfg->dim_end_hour);
+
+    return send_json_response(req, root);
+}
+
+/* ── PUT /api/config ── */
+
+static esp_err_t api_put_config(httpd_req_t *req)
+{
+    char buf[1024];
+    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (ret <= 0) return ESP_FAIL;
+    buf[ret] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    if (!root) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+
+    device_config_t cfg;
+    memcpy(&cfg, config_get(), sizeof(cfg));
+
+    cJSON *labels = cJSON_GetObjectItem(root, "mode_labels");
+    if (labels && cJSON_IsArray(labels)) {
+        int count = cJSON_GetArraySize(labels);
+        if (count > MODE_COUNT) count = MODE_COUNT;
+        for (int i = 0; i < count; i++) {
+            cJSON *item = cJSON_GetArrayItem(labels, i);
+            if (item && cJSON_IsString(item)) {
+                strncpy(cfg.mode_labels[i], item->valuestring,
+                        sizeof(cfg.mode_labels[i]) - 1);
+                cfg.mode_labels[i][sizeof(cfg.mode_labels[i]) - 1] = '\0';
+            }
+        }
+    }
+
+    cJSON *subs = cJSON_GetObjectItem(root, "mode_subtitles");
+    if (subs && cJSON_IsArray(subs)) {
+        int count = cJSON_GetArraySize(subs);
+        if (count > MODE_COUNT) count = MODE_COUNT;
+        for (int i = 0; i < count; i++) {
+            cJSON *item = cJSON_GetArrayItem(subs, i);
+            if (item && cJSON_IsString(item)) {
+                strncpy(cfg.mode_subtitles[i], item->valuestring,
+                        sizeof(cfg.mode_subtitles[i]) - 1);
+                cfg.mode_subtitles[i][sizeof(cfg.mode_subtitles[i]) - 1] = '\0';
+            }
+        }
+    }
+
+    cJSON *item;
+    if ((item = cJSON_GetObjectItem(root, "default_mode")) && cJSON_IsNumber(item))
+        cfg.default_mode = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "pomo_work_min")) && cJSON_IsNumber(item))
+        cfg.pomo_work_min = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "pomo_break_min")) && cJSON_IsNumber(item))
+        cfg.pomo_break_min = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "brightness")) && cJSON_IsNumber(item))
+        cfg.brightness = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "dim_brightness")) && cJSON_IsNumber(item))
+        cfg.dim_brightness = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "dim_start_hour")) && cJSON_IsNumber(item))
+        cfg.dim_start_hour = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "dim_end_hour")) && cJSON_IsNumber(item))
+        cfg.dim_end_hour = item->valueint;
+
+    cJSON_Delete(root);
+    config_set(&cfg);
+
+    /* Update state manager with new defaults */
+    state_set_default_mode(cfg.default_mode);
+
+    return api_get_config(req);
+}
+
 /* ── GET /api/version ── */
 
 static esp_err_t api_get_version(httpd_req_t *req)
@@ -318,6 +415,8 @@ esp_err_t webserver_start(void)
         { .uri = "/api/timer/stop",  .method = HTTP_POST,    .handler = api_timer_stop },
         { .uri = "/api/modes",       .method = HTTP_GET,     .handler = api_get_modes },
         { .uri = "/api/version",     .method = HTTP_GET,     .handler = api_get_version },
+        { .uri = "/api/config",      .method = HTTP_GET,     .handler = api_get_config },
+        { .uri = "/api/config",      .method = HTTP_PUT,     .handler = api_put_config },
         { .uri = "/api/brightness",  .method = HTTP_PUT,     .handler = api_put_brightness },
         { .uri = "/api/*",           .method = HTTP_OPTIONS, .handler = cors_handler },
     };

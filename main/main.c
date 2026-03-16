@@ -105,15 +105,18 @@ static void one_second_lv_timer_cb(lv_timer_t *timer)
         ui_update_weather(w->temp_f, weather_code_icon(w->weather_code),
                           w->precip_chance, w->valid);
 
-        /* Auto-dim: 10PM-7AM at 15% brightness, otherwise 100% */
+        /* Auto-dim based on config quiet hours */
         if (ntp_is_synced()) {
+            const device_config_t *cfg = config_get();
             time_t now;
             time(&now);
             struct tm ti;
             localtime_r(&now, &ti);
             int hour = ti.tm_hour;
-            bool quiet = (hour >= 22 || hour < 7);
-            board_backlight_set(quiet ? 15 : 100);
+            bool quiet = (cfg->dim_start_hour > cfg->dim_end_hour)
+                ? (hour >= cfg->dim_start_hour || hour < cfg->dim_end_hour)
+                : (hour >= cfg->dim_start_hour && hour < cfg->dim_end_hour);
+            board_backlight_set(quiet ? cfg->dim_brightness : cfg->brightness);
         }
     }
 }
@@ -174,7 +177,8 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_timer_create(&tick_args, &tick_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, 2000));
 
-    /* ── State init ── */
+    /* ── Config + State init ── */
+    config_init();  /* Load device config from LittleFS (must be before state_init) */
     ESP_ERROR_CHECK(state_init());
     state_register_change_cb(on_state_change, NULL);
 

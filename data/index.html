@@ -220,6 +220,37 @@ input[type="range"]::-webkit-slider-thumb {
 .settings-toggle.open::before { transform: rotate(90deg); }
 #settings-body { display: none; padding-top: 12px; }
 #settings-body.open { display: block; }
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.settings-grid label { font-size: 14px; color: var(--dim); }
+.settings-grid input, .settings-grid select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+}
+.mode-config-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.mode-config-row span { font-size: 12px; color: var(--dim); }
+.mode-config-row input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+}
 
 @media (max-width: 480px) {
   .container { padding: 12px; }
@@ -299,9 +330,39 @@ input[type="range"]::-webkit-slider-thumb {
   <div class="section">
     <h2 class="settings-toggle" onclick="toggleSettings()">Settings</h2>
     <div id="settings-body">
-      <p style="color:var(--dim);font-size:13px;">
-        WiFi, MQTT, and device settings will be available here in a future update.
-      </p>
+
+      <h3 style="font-size:12px;color:var(--dim);letter-spacing:1px;margin:16px 0 8px">MODE LABELS & DEFAULT SUBTITLES</h3>
+      <div id="mode-config"></div>
+
+      <h3 style="font-size:12px;color:var(--dim);letter-spacing:1px;margin:16px 0 8px">DEVICE</h3>
+      <div class="settings-grid">
+        <label>Default mode:</label>
+        <select id="cfg-default-mode"></select>
+
+        <label>Pomodoro work (min):</label>
+        <input type="number" id="cfg-pomo-work" value="25" style="width:60px">
+
+        <label>Pomodoro break (min):</label>
+        <input type="number" id="cfg-pomo-break" value="5" style="width:60px">
+
+        <label>Brightness (%):</label>
+        <input type="number" id="cfg-brightness" value="100" min="0" max="100" style="width:60px">
+
+        <label>Dim brightness (%):</label>
+        <input type="number" id="cfg-dim-brightness" value="15" min="0" max="100" style="width:60px">
+
+        <label>Dim start hour:</label>
+        <input type="number" id="cfg-dim-start" value="22" min="0" max="23" style="width:60px">
+
+        <label>Dim end hour:</label>
+        <input type="number" id="cfg-dim-end" value="7" min="0" max="23" style="width:60px">
+      </div>
+
+      <div style="margin-top:16px">
+        <button class="primary" onclick="saveConfig()">Save Settings</button>
+        <span id="save-status" style="margin-left:8px;font-size:13px;color:var(--dim)"></span>
+      </div>
+
     </div>
   </div>
 
@@ -463,8 +524,106 @@ function toggleSettings() {
   body.classList.toggle('open');
 }
 
+// --- Config ---
+async function loadConfig() {
+  try {
+    const r = await fetch('/api/config');
+    const cfg = await r.json();
+
+    // Build mode config rows
+    const container = document.getElementById('mode-config');
+    while (container.firstChild) container.removeChild(container.firstChild);
+    MODES.forEach((m, i) => {
+      const row = document.createElement('div');
+      row.className = 'mode-config-row';
+
+      const span = document.createElement('span');
+      span.textContent = m.label;
+      row.appendChild(span);
+
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.id = `cfg-label-${i}`;
+      labelInput.value = cfg.mode_labels[i] || m.label;
+      labelInput.placeholder = 'Label';
+      row.appendChild(labelInput);
+
+      const subInput = document.createElement('input');
+      subInput.type = 'text';
+      subInput.id = `cfg-sub-${i}`;
+      subInput.value = cfg.mode_subtitles[i] || '';
+      subInput.placeholder = 'Default subtitle';
+      row.appendChild(subInput);
+
+      container.appendChild(row);
+    });
+
+    // Build default mode dropdown
+    const sel = document.getElementById('cfg-default-mode');
+    while (sel.firstChild) sel.removeChild(sel.firstChild);
+    MODES.forEach((m, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = cfg.mode_labels[i] || m.label;
+      opt.selected = (i === cfg.default_mode);
+      sel.appendChild(opt);
+    });
+
+    // Fill other fields
+    document.getElementById('cfg-pomo-work').value = cfg.pomo_work_min || 25;
+    document.getElementById('cfg-pomo-break').value = cfg.pomo_break_min || 5;
+    document.getElementById('cfg-brightness').value = cfg.brightness || 100;
+    document.getElementById('cfg-dim-brightness').value = cfg.dim_brightness || 15;
+    document.getElementById('cfg-dim-start').value = cfg.dim_start_hour || 22;
+    document.getElementById('cfg-dim-end').value = cfg.dim_end_hour || 7;
+  } catch(e) {
+    console.error('Failed to load config', e);
+  }
+}
+
+async function saveConfig() {
+  const labels = [];
+  const subs = [];
+  MODES.forEach((m, i) => {
+    labels.push(document.getElementById(`cfg-label-${i}`).value);
+    subs.push(document.getElementById(`cfg-sub-${i}`).value);
+  });
+
+  const cfg = {
+    mode_labels: labels,
+    mode_subtitles: subs,
+    default_mode: parseInt(document.getElementById('cfg-default-mode').value),
+    pomo_work_min: parseInt(document.getElementById('cfg-pomo-work').value),
+    pomo_break_min: parseInt(document.getElementById('cfg-pomo-break').value),
+    brightness: parseInt(document.getElementById('cfg-brightness').value),
+    dim_brightness: parseInt(document.getElementById('cfg-dim-brightness').value),
+    dim_start_hour: parseInt(document.getElementById('cfg-dim-start').value),
+    dim_end_hour: parseInt(document.getElementById('cfg-dim-end').value),
+  };
+
+  try {
+    const r = await fetch('/api/config', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(cfg)
+    });
+    if (r.ok) {
+      const status = document.getElementById('save-status');
+      status.textContent = 'Saved!';
+      setTimeout(() => status.textContent = '', 3000);
+      labels.forEach((label, i) => {
+        const btn = document.querySelector(`.mode-btn[data-mode="${i}"]`);
+        if (btn) btn.textContent = label;
+      });
+    }
+  } catch(e) {
+    document.getElementById('save-status').textContent = 'Error saving';
+  }
+}
+
 // --- Init ---
 buildModeButtons();
+loadConfig();
 connectWS();
 
 // Periodic state refresh (backup for WebSocket)

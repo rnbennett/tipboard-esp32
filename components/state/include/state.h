@@ -106,3 +106,26 @@ void state_tick(void);
 /* Default mode configuration */
 esp_err_t state_set_default_mode(status_mode_t mode);
 status_mode_t state_get_default_mode(void);
+
+/* ── Device configuration (persisted to LittleFS) ── */
+
+typedef struct {
+    char mode_labels[MODE_COUNT][24];     /* Custom display labels per mode */
+    char mode_subtitles[MODE_COUNT][64];  /* Default subtitles per mode */
+    status_mode_t default_mode;
+    int32_t pomo_work_min;
+    int32_t pomo_break_min;
+    uint8_t brightness;
+    uint8_t dim_brightness;
+    uint8_t dim_start_hour;
+    uint8_t dim_end_hour;
+} device_config_t;
+
+/* Get pointer to device config */
+const device_config_t *config_get(void);
+
+/* Update device config (saves to LittleFS) */
+esp_err_t config_set(const device_config_t *cfg);
+
+/* Initialize config (load from LittleFS or defaults) */
+esp_err_t config_init(void);

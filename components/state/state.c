@@ -88,6 +88,10 @@ const status_state_t *state_get(void)
 const char *state_mode_label(status_mode_t mode)
 {
     if (mode >= MODE_COUNT) return "UNKNOWN";
+    const device_config_t *cfg = config_get();
+    if (cfg && cfg->mode_labels[mode][0]) {
+        return cfg->mode_labels[mode];
+    }
     return MODE_LABELS[mode];
 }
 
@@ -116,8 +120,17 @@ esp_err_t state_set_mode(status_mode_t mode, status_source_t source)
     s_state.source = source;
     s_state.priority = incoming_priority;
 
+    /* Apply default subtitle from config if subtitle was cleared */
+    if (s_state.subtitle[0] == '\0') {
+        const device_config_t *cfg = config_get();
+        if (cfg && cfg->mode_subtitles[mode][0]) {
+            strncpy(s_state.subtitle, cfg->mode_subtitles[mode],
+                    sizeof(s_state.subtitle) - 1);
+        }
+    }
+
     ESP_LOGI(TAG, "Mode changed to %s (source=%d, priority=%d)",
-             MODE_LABELS[mode], source, incoming_priority);
+             state_mode_label(mode), source, incoming_priority);
     notify_change();
     return ESP_OK;
 }
