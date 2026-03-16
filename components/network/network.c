@@ -1,4 +1,5 @@
 #include "network.h"
+#include "state.h"
 #include <string.h>
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -135,7 +136,13 @@ esp_err_t network_wifi_connect(void)
     ESP_LOGI(TAG, "Connecting to WiFi: %s", ssid);
     strncpy(s_ssid, ssid, sizeof(s_ssid) - 1);
 
-    esp_netif_create_default_wifi_sta();
+    esp_netif_t *sta = esp_netif_create_default_wifi_sta();
+
+    /* Set hostname from device config */
+    const device_config_t *cfg_dev = config_get();
+    const char *hostname = (cfg_dev && cfg_dev->device_name[0]) ? cfg_dev->device_name : "tipboard";
+    esp_netif_set_hostname(sta, hostname);
+    ESP_LOGI(TAG, "Hostname: %s", hostname);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
