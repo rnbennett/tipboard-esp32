@@ -157,7 +157,7 @@ static void create_hero_zone(lv_obj_t *parent)
     lv_obj_set_style_text_font(s_mode_label, &font_prototype_120, 0);
     lv_obj_set_style_text_color(s_mode_label, UI_COLOR_TEXT_WHITE, 0);
     lv_obj_set_style_text_letter_space(s_mode_label, 12, 0);
-    lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -40);
+    lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, 0);
 
     /* Subtitle — Prototype 28px */
     s_subtitle_label = lv_label_create(s_hero);
@@ -356,11 +356,16 @@ void ui_update(const status_state_t *state)
 
     s_current_pomo_phase = state->pomo_phase;
 
-    /* Reposition mode label: shift up when timer is visible to make room */
+    /* Reposition mode label based on context:
+     * - Pomodoro with timer: shift up to make room for countdown
+     * - Subtitle visible: shift up slightly for subtitle below
+     * - Normal: vertically centered */
     if (state->mode == MODE_POMODORO && state->pomo_phase != POMO_IDLE) {
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -80);
+    } else if (state->subtitle[0] != '\0') {
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -30);
     } else {
-        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -40);
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, 0);
     }
 
     /* Bottom bar Pomodoro text */
