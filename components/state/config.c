@@ -30,10 +30,11 @@ static void set_defaults(void)
     s_config.dim_brightness = 15;
     s_config.dim_start_hour = 22;
     s_config.dim_end_hour = 7;
-    strncpy(s_config.timezone, "EST5EDT,M3.2.0,M11.1.0", sizeof(s_config.timezone) - 1);
-    strncpy(s_config.weather_lat, "0.0000", sizeof(s_config.weather_lat) - 1);
-    strncpy(s_config.weather_lon, "0.0000", sizeof(s_config.weather_lon) - 1);
-    strncpy(s_config.mqtt_broker, "mqtt://YOUR_MQTT_BROKER_IP:1883", sizeof(s_config.mqtt_broker) - 1);
+    /* Build-time defaults from .env file (or generic fallbacks) */
+    strncpy(s_config.timezone, TIPBOARD_TIMEZONE, sizeof(s_config.timezone) - 1);
+    strncpy(s_config.weather_lat, TIPBOARD_WEATHER_LAT, sizeof(s_config.weather_lat) - 1);
+    strncpy(s_config.weather_lon, TIPBOARD_WEATHER_LON, sizeof(s_config.weather_lon) - 1);
+    strncpy(s_config.mqtt_broker, TIPBOARD_MQTT_BROKER, sizeof(s_config.mqtt_broker) - 1);
 }
 
 static esp_err_t save_config(void)
