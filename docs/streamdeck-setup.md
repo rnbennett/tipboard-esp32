@@ -1,11 +1,12 @@
 # Tipboard Stream Deck Setup
 
 ## Plugin
-Install **API Ninja** from the Stream Deck Store (free).
+Install **API Monkey** from the Elgato Marketplace (Mac + Windows).
+https://marketplace.elgato.com/product/api-monkey-754d958d-1c8e-4734-bbc3-b01ab914e3bb
 
 ## Button Configuration
 
-For each button, add an "API Ninja" action with these settings:
+For each button, add an "API Monkey" action with these settings:
 
 ### Mode Buttons
 
