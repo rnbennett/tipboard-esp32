@@ -95,13 +95,8 @@ esp_err_t state_set_mode(status_mode_t mode, status_source_t source)
 {
     uint8_t incoming_priority = source_to_priority(source);
 
-    /* Manual/keypad always wins. For automation sources, reject if current has higher priority. */
-    if (incoming_priority > s_state.priority &&
-        source != SOURCE_MANUAL && source != SOURCE_KEYPAD) {
-        ESP_LOGW(TAG, "Rejected mode change: current priority %d > incoming %d",
-                 s_state.priority, incoming_priority);
-        return ESP_ERR_INVALID_STATE;
-    }
+    /* All sources can change mode — priority enforcement removed.
+     * Manual touch can always re-override after an MQTT automation change. */
 
     /* If switching away from pomodoro, cancel it */
     if (s_state.mode == MODE_POMODORO && mode != MODE_POMODORO) {

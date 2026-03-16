@@ -360,14 +360,21 @@ void ui_update(const status_state_t *state)
 
     s_current_pomo_phase = state->pomo_phase;
 
-    /* Reposition mode label based on context:
-     * - Pomodoro with timer: shift up to make room for countdown
-     * - Subtitle visible: shift up slightly for subtitle below
-     * - Normal: vertically centered */
-    if (state->mode == MODE_POMODORO && state->pomo_phase != POMO_IDLE) {
-        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -80);
-    } else if (state->subtitle[0] != '\0') {
+    /* Reposition mode label based on what's visible below it */
+    bool has_subtitle = (state->subtitle[0] != '\0');
+    bool has_timer = (state->timer_type == TIMER_COUNTDOWN &&
+                      state_timer_get_seconds() > 0);
+
+    if (has_subtitle && has_timer) {
+        /* Meeting with subtitle + countdown: shift up more */
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -60);
+        lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 10);
+    } else if (has_subtitle) {
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -30);
+        lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 30);
+    } else if (has_timer) {
+        /* Pomodoro: mode up, timer below */
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -50);
     } else {
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, 0);
     }
@@ -418,18 +425,22 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
         lv_label_set_text_fmt(s_timer_label, "%d:%02d", m, s);
     }
 
-    /* Timer arc for countdown */
+    /* Arc only for Pomodoro, just text for meetings */
     const status_state_t *state = state_get();
-    if (state->timer_duration_sec > 0) {
+    if (state->mode == MODE_POMODORO && state->timer_duration_sec > 0) {
         int32_t pct = 100 - ((seconds * 100) / state->timer_duration_sec);
         if (pct < 0) pct = 0;
         if (pct > 100) pct = 100;
         const mode_color_scheme_t *scheme = ui_theme_get_scheme(state->mode);
         ui_timer_arc_update(pct, scheme->primary, true);
+        lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 80);
+    } else {
+        /* Meeting/other countdown: just text, no arc */
+        ui_timer_arc_update(0, lv_color_black(), false);
+        /* Position below subtitle if present */
+        bool has_sub = (state->subtitle[0] != '\0');
+        lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, has_sub ? 50 : 40);
     }
-
-    /* Position timer text centered inside the arc */
-    lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, 80);
 }
 
 /* Cached WiFi state */
