@@ -429,10 +429,11 @@ async function clearSubtitle() {
 }
 
 async function startPomodoro() {
+  const mins = parseInt(document.getElementById('pomo-duration').value) || 25;
   const r = await fetch('/api/timer/start', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({type: 'pomodoro'})
+    body: JSON.stringify({type: 'pomodoro', work_min: mins})
   });
   updateState(await r.json());
 }

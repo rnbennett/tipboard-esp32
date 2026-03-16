@@ -104,7 +104,14 @@ static esp_err_t api_timer_start(httpd_req_t *req)
     if (type && cJSON_IsString(type)) {
         if (strcmp(type->valuestring, "pomodoro") == 0) {
             const status_state_t *s = state_get();
-            state_pomodoro_start(s->pomo_work_sec, s->pomo_break_sec);
+            int work_sec = s->pomo_work_sec;
+            int break_sec = s->pomo_break_sec;
+            cJSON *work_min = cJSON_GetObjectItem(root, "work_min");
+            if (work_min && cJSON_IsNumber(work_min)) {
+                work_sec = work_min->valueint * 60;
+                break_sec = (work_min->valueint >= 25) ? 5 * 60 : 3 * 60;
+            }
+            state_pomodoro_start(work_sec, break_sec);
         } else if (strcmp(type->valuestring, "elapsed") == 0) {
             state_timer_start_elapsed();
         }
