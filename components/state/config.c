@@ -36,6 +36,8 @@ static void set_defaults(void)
     strncpy(s_config.weather_lon, TIPBOARD_WEATHER_LON, sizeof(s_config.weather_lon) - 1);
     strncpy(s_config.mqtt_broker, TIPBOARD_MQTT_BROKER, sizeof(s_config.mqtt_broker) - 1);
     strncpy(s_config.device_name, "tipboard", sizeof(s_config.device_name) - 1);
+    s_config.mirror_mode = 0;
+    s_config.mirror_source[0] = '\0';
 }
 
 static esp_err_t save_config(void)
@@ -62,6 +64,8 @@ static esp_err_t save_config(void)
     cJSON_AddStringToObject(root, "weather_lon", s_config.weather_lon);
     cJSON_AddStringToObject(root, "mqtt_broker", s_config.mqtt_broker);
     cJSON_AddStringToObject(root, "device_name", s_config.device_name);
+    cJSON_AddNumberToObject(root, "mirror_mode", s_config.mirror_mode);
+    cJSON_AddStringToObject(root, "mirror_source", s_config.mirror_source);
 
     char *str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -139,6 +143,10 @@ static esp_err_t load_config(void)
         strncpy(s_config.mqtt_broker, item->valuestring, sizeof(s_config.mqtt_broker) - 1);
     if ((item = cJSON_GetObjectItem(root, "device_name")) && cJSON_IsString(item))
         strncpy(s_config.device_name, item->valuestring, sizeof(s_config.device_name) - 1);
+    if ((item = cJSON_GetObjectItem(root, "mirror_mode")) && cJSON_IsNumber(item))
+        s_config.mirror_mode = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "mirror_source")) && cJSON_IsString(item))
+        strncpy(s_config.mirror_source, item->valuestring, sizeof(s_config.mirror_source) - 1);
 
     cJSON_Delete(root);
     ESP_LOGI(TAG, "Config loaded");

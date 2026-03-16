@@ -124,6 +124,8 @@ typedef struct {
     char weather_lon[16];                 /* Longitude for weather API */
     char mqtt_broker[64];                 /* MQTT broker URI e.g. "mqtt://192.168.1.100:1883" */
     char device_name[32];                 /* Hostname + MQTT topic prefix e.g. "tipboard" */
+    uint8_t mirror_mode;                  /* 0=primary, 1=mirror (read-only display) */
+    char mirror_source[32];               /* device_name of primary to mirror */
 } device_config_t;
 
 /* Get pointer to device config */
