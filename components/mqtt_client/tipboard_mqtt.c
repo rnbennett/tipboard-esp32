@@ -140,6 +140,14 @@ static void handle_command(const char *data, int len)
         state_set_subtitle(subtitle->valuestring);
     }
 
+    /* Auto-expire with countdown: {"auto_expire_min": 30} */
+    cJSON *expire = cJSON_GetObjectItem(root, "auto_expire_min");
+    if (expire && cJSON_IsNumber(expire) && expire->valueint > 0) {
+        int secs = expire->valueint * 60;
+        state_timer_start_countdown(secs);
+        state_set_auto_expire(secs, state_get_default_mode());
+    }
+
     /* Timer commands: {"command": "timer_start", "type": "pomodoro"} */
     cJSON *cmd = cJSON_GetObjectItem(root, "command");
     if (cmd && cJSON_IsString(cmd)) {
@@ -180,10 +188,53 @@ static void handle_command(const char *data, int len)
 
 /* ── Handle incoming calendar event ── */
 
+/* Forward declare UI function */
+extern void ui_update_calendar(const char *title, const char *time_str);
+
 static void handle_calendar(const char *data, int len)
 {
-    /* Calendar data from HA — just log for now, display in Phase 5 */
-    ESP_LOGI(TAG, "Calendar event received (%d bytes)", len);
+    char *buf = malloc(len + 1);
+    if (!buf) return;
+    memcpy(buf, data, len);
+    buf[len] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    free(buf);
+    if (!root) return;
+
+    cJSON *title = cJSON_GetObjectItem(root, "title");
+    cJSON *start = cJSON_GetObjectItem(root, "start");
+
+    const char *title_str = (title && cJSON_IsString(title)) ? title->valuestring : "";
+    const char *start_str = (start && cJSON_IsString(start)) ? start->valuestring : "";
+
+    /* Filter out fake/blocked calendar events (start with lightning bolt) */
+    if (title_str[0] != '\0') {
+        /* Check for UTF-8 lightning bolt (U+26A1 = 0xE2 0x9A 0xA1) or
+         * lock symbol (U+1F512) at the start, or "Friday-managed" in text */
+        if (strstr(title_str, "Friday-managed") != NULL ||
+            strstr(title_str, "actually free") != NULL) {
+            ESP_LOGI(TAG, "Calendar: skipping fake meeting: %s", title_str);
+            title_str = "";
+        }
+    }
+
+    /* Extract time from ISO start string "2026-03-15T14:00:00" → "2:00 PM" */
+    char time_display[16] = "";
+    if (start_str[0] && strlen(start_str) >= 16) {
+        int hour = 0, min = 0;
+        if (sscanf(start_str + 11, "%d:%d", &hour, &min) == 2) {
+            int h12 = hour % 12;
+            if (h12 == 0) h12 = 12;
+            const char *ampm = hour >= 12 ? "PM" : "AM";
+            snprintf(time_display, sizeof(time_display), "%d:%02d %s", h12, min, ampm);
+        }
+    }
+
+    ESP_LOGI(TAG, "Calendar: \"%s\" at %s", title_str, time_display);
+    ui_update_calendar(title_str, time_display);
+
+    cJSON_Delete(root);
 }
 
 /* ── MQTT event handler ── */

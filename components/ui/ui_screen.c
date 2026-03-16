@@ -51,6 +51,10 @@ static lv_obj_t *s_divider_bottom = NULL;
 static status_mode_t s_current_mode = MODE_COUNT;
 static pomo_phase_t s_current_pomo_phase = POMO_IDLE;
 
+/* Calendar event cache */
+static char s_cal_title[64] = "";
+static char s_cal_time[16] = "";
+
 /* WiFi display toggle */
 static bool s_wifi_show_ip = false;
 
@@ -368,12 +372,19 @@ void ui_update(const status_state_t *state)
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, 0);
     }
 
-    /* Bottom bar Pomodoro text */
+    /* Bottom bar: Pomodoro status OR next calendar event */
     if (state->mode == MODE_POMODORO) {
         if (state->pomo_phase == POMO_WORK) {
             lv_label_set_text(s_pomo_label, "Working... (tap to cancel)");
         } else if (state->pomo_phase == POMO_BREAK) {
             lv_label_set_text(s_pomo_label, "Break time! (tap to cancel)");
+        }
+    } else if (s_cal_title[0]) {
+        /* Show next calendar event */
+        if (s_cal_time[0]) {
+            lv_label_set_text_fmt(s_pomo_label, "%s  |  %s", s_cal_title, s_cal_time);
+        } else {
+            lv_label_set_text(s_pomo_label, s_cal_title);
         }
     } else {
         lv_label_set_text(s_pomo_label, "Tap for Pomodoro (25:00)");
@@ -481,6 +492,39 @@ void ui_update_weather(float temp_f, const char *icon, int precip_pct, bool vali
         lv_label_set_text_fmt(s_weather_label, "%d F %s %d%%", temp_i, icon, precip_pct);
     } else {
         lv_label_set_text_fmt(s_weather_label, "%d F %s", temp_i, icon);
+    }
+}
+
+void ui_update_calendar(const char *title, const char *time_str)
+{
+    if (!s_pomo_label) return;
+
+    if (title && title[0]) {
+        strncpy(s_cal_title, title, sizeof(s_cal_title) - 1);
+        s_cal_title[sizeof(s_cal_title) - 1] = '\0';
+        if (time_str && time_str[0]) {
+            strncpy(s_cal_time, time_str, sizeof(s_cal_time) - 1);
+            s_cal_time[sizeof(s_cal_time) - 1] = '\0';
+        } else {
+            s_cal_time[0] = '\0';
+        }
+    } else {
+        s_cal_title[0] = '\0';
+        s_cal_time[0] = '\0';
+    }
+
+    /* Only update bottom bar if not in Pomodoro (Pomodoro owns the bottom bar) */
+    const status_state_t *state = state_get();
+    if (state->mode != MODE_POMODORO) {
+        if (s_cal_title[0]) {
+            if (s_cal_time[0]) {
+                lv_label_set_text_fmt(s_pomo_label, "%s  |  %s", s_cal_title, s_cal_time);
+            } else {
+                lv_label_set_text(s_pomo_label, s_cal_title);
+            }
+        } else {
+            lv_label_set_text(s_pomo_label, "Tap for Pomodoro (25:00)");
+        }
     }
 }
 

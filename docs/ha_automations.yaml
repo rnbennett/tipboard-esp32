@@ -1,0 +1,71 @@
+# Tipboard Calendar Automations
+# Add these to your Home Assistant automations.yaml or create via UI
+
+# 1. Publish next calendar event to MQTT every 5 minutes
+- alias: "Tipboard: Publish Next Calendar Event"
+  trigger:
+    - platform: time_pattern
+      minutes: "/5"
+    - platform: homeassistant
+      event: start
+  action:
+    - service: calendar.get_events
+      target:
+        entity_id: calendar.centegix_calendar
+      data:
+        duration:
+          hours: 8
+      response_variable: events
+    - service: mqtt.publish
+      data:
+        topic: tipboard/calendar
+        retain: true
+        payload: >-
+          {% set items = events['calendar.centegix_calendar']['events'] %}
+          {% if items | length > 0 %}
+            {% set e = items[0] %}
+            {"title": "{{ e.summary }}", "start": "{{ e.start }}", "end": "{{ e.end }}"}
+          {% else %}
+            {"title": "", "start": "", "end": ""}
+          {% endif %}
+
+# 2. Auto-switch to Meeting mode when a REAL calendar event starts
+#    (skips fake Friday-managed blocker events)
+- alias: "Tipboard: Meeting Auto-Switch"
+  trigger:
+    - platform: calendar
+      event: start
+      entity_id: calendar.centegix_calendar
+  condition:
+    - condition: not
+      conditions:
+        - condition: template
+          value_template: "{{ 'Friday-managed' in trigger.calendar_event.summary }}"
+        - condition: template
+          value_template: "{{ 'actually free' in trigger.calendar_event.summary }}"
+  action:
+    - service: mqtt.publish
+      data:
+        topic: tipboard/command
+        payload: >-
+          {"mode": 2,
+           "subtitle": "{{ trigger.calendar_event.summary }}",
+           "auto_expire_min": {{ ((as_timestamp(trigger.calendar_event.end) - now().timestamp()) / 60) | int }}}
+
+# 3. Revert from Meeting mode when calendar event ends
+#    (only if currently in Meeting mode — don't override manual status)
+- alias: "Tipboard: Meeting Auto-Revert"
+  trigger:
+    - platform: calendar
+      event: end
+      entity_id: calendar.centegix_calendar
+  condition:
+    - condition: not
+      conditions:
+        - condition: template
+          value_template: "{{ 'Friday-managed' in trigger.calendar_event.summary }}"
+  action:
+    - service: mqtt.publish
+      data:
+        topic: tipboard/command
+        payload: '{"mode": 0, "subtitle": ""}'

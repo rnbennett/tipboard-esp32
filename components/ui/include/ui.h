@@ -22,5 +22,8 @@ void ui_update_wifi_status(const char *ip, bool connected, int rssi_pct);
 /* Update weather display in top bar (right side) */
 void ui_update_weather(float temp_f, const char *icon, int precip_pct, bool valid);
 
+/* Update bottom bar with next calendar event */
+void ui_update_calendar(const char *title, const char *time_str);
+
 /* Get the main screen object */
 lv_obj_t *ui_get_screen(void);
