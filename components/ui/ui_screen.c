@@ -354,12 +354,6 @@ void ui_update(const status_state_t *state)
         ui_transition_slide(s_hero, state->mode > s_current_mode);
     }
 
-    /* Celebrate on Pomodoro phase transitions (work→break, break→done) */
-    if (state->mode == MODE_POMODORO && state->pomo_phase != s_current_pomo_phase) {
-        if (s_current_pomo_phase == POMO_WORK || s_current_pomo_phase == POMO_BREAK) {
-            ui_transition_celebrate(s_hero);
-        }
-    }
     s_current_pomo_phase = state->pomo_phase;
 
     /* Reposition mode label: shift up when timer is visible to make room */
