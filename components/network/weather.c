@@ -1,5 +1,7 @@
 #include "weather.h"
+#include "state.h"
 #include <string.h>
+#include <stdio.h>
 #include "esp_log.h"
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
@@ -8,14 +10,6 @@
 #include "freertos/task.h"
 
 static const char *TAG = "weather";
-
-/* Alpharetta, GA */
-#define WEATHER_LAT   "0.0000"
-#define WEATHER_LON   "0.0000"
-#define WEATHER_URL   "https://api.open-meteo.com/v1/forecast" \
-                      "?latitude=" WEATHER_LAT "&longitude=" WEATHER_LON \
-                      "&current=temperature_2m,weather_code,relative_humidity_2m,precipitation_probability" \
-                      "&temperature_unit=fahrenheit&timezone=America/New_York"
 
 #define FETCH_INTERVAL_MS  (15 * 60 * 1000)  /* 15 minutes */
 #define HTTP_BUF_SIZE      1024
@@ -72,11 +66,23 @@ const char *weather_code_icon(int code)
 
 static esp_err_t fetch_weather(void)
 {
+    const device_config_t *cfg = config_get();
+    const char *lat = (cfg && cfg->weather_lat[0]) ? cfg->weather_lat : "0.0000";
+    const char *lon = (cfg && cfg->weather_lon[0]) ? cfg->weather_lon : "0.0000";
+
+    char url[256];
+    snprintf(url, sizeof(url),
+             "https://api.open-meteo.com/v1/forecast"
+             "?latitude=%s&longitude=%s"
+             "&current=temperature_2m,weather_code,relative_humidity_2m,precipitation_probability"
+             "&temperature_unit=fahrenheit&timezone=America/New_York",
+             lat, lon);
+
     char *buf = malloc(HTTP_BUF_SIZE);
     if (!buf) return ESP_ERR_NO_MEM;
 
     esp_http_client_config_t config = {
-        .url = WEATHER_URL,
+        .url = url,
         .timeout_ms = 10000,
         .crt_bundle_attach = esp_crt_bundle_attach,
     };

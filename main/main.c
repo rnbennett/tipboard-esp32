@@ -198,9 +198,8 @@ void app_main(void)
     /* ── Network init (WiFi + NTP) ── */
     ESP_ERROR_CHECK(network_init());
 
-    /* Store WiFi credentials on first boot (dev convenience) */
-    network_set_credentials("YOUR_WIFI_SSID", "WIFI_PASSWORD_REDACTED");
-
+    /* WiFi credentials stored in NVS — configured via AP mode captive portal
+     * on first boot, or via dashboard settings. No hardcoded credentials. */
     network_wifi_connect();
     ntp_init();
 

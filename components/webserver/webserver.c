@@ -196,6 +196,10 @@ static esp_err_t api_get_config(httpd_req_t *req)
     cJSON_AddNumberToObject(root, "dim_brightness", cfg->dim_brightness);
     cJSON_AddNumberToObject(root, "dim_start_hour", cfg->dim_start_hour);
     cJSON_AddNumberToObject(root, "dim_end_hour", cfg->dim_end_hour);
+    cJSON_AddStringToObject(root, "timezone", cfg->timezone);
+    cJSON_AddStringToObject(root, "weather_lat", cfg->weather_lat);
+    cJSON_AddStringToObject(root, "weather_lon", cfg->weather_lon);
+    cJSON_AddStringToObject(root, "mqtt_broker", cfg->mqtt_broker);
 
     return send_json_response(req, root);
 }
@@ -261,6 +265,22 @@ static esp_err_t api_put_config(httpd_req_t *req)
         cfg.dim_start_hour = item->valueint;
     if ((item = cJSON_GetObjectItem(root, "dim_end_hour")) && cJSON_IsNumber(item))
         cfg.dim_end_hour = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "timezone")) && cJSON_IsString(item)) {
+        strncpy(cfg.timezone, item->valuestring, sizeof(cfg.timezone) - 1);
+        cfg.timezone[sizeof(cfg.timezone) - 1] = '\0';
+    }
+    if ((item = cJSON_GetObjectItem(root, "weather_lat")) && cJSON_IsString(item)) {
+        strncpy(cfg.weather_lat, item->valuestring, sizeof(cfg.weather_lat) - 1);
+        cfg.weather_lat[sizeof(cfg.weather_lat) - 1] = '\0';
+    }
+    if ((item = cJSON_GetObjectItem(root, "weather_lon")) && cJSON_IsString(item)) {
+        strncpy(cfg.weather_lon, item->valuestring, sizeof(cfg.weather_lon) - 1);
+        cfg.weather_lon[sizeof(cfg.weather_lon) - 1] = '\0';
+    }
+    if ((item = cJSON_GetObjectItem(root, "mqtt_broker")) && cJSON_IsString(item)) {
+        strncpy(cfg.mqtt_broker, item->valuestring, sizeof(cfg.mqtt_broker) - 1);
+        cfg.mqtt_broker[sizeof(cfg.mqtt_broker) - 1] = '\0';
+    }
 
     cJSON_Delete(root);
     config_set(&cfg);
@@ -464,12 +484,61 @@ static esp_err_t api_ota_handler(httpd_req_t *req)
 
 extern const uint8_t index_html_start[] asm("_binary_index_html_start");
 extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
+extern const uint8_t setup_html_start[] asm("_binary_setup_html_start");
+extern const uint8_t setup_html_end[]   asm("_binary_setup_html_end");
 
 static esp_err_t dashboard_handler(httpd_req_t *req)
 {
-    httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, (const char *)index_html_start,
-                    index_html_end - index_html_start);
+    /* Serve setup page in AP mode, dashboard in STA mode */
+    wifi_state_t ws = network_get_state();
+    if (ws == WIFI_STATE_AP_MODE) {
+        httpd_resp_set_type(req, "text/html");
+        httpd_resp_send(req, (const char *)setup_html_start,
+                        setup_html_end - setup_html_start);
+    } else {
+        httpd_resp_set_type(req, "text/html");
+        httpd_resp_send(req, (const char *)index_html_start,
+                        index_html_end - index_html_start);
+    }
+    return ESP_OK;
+}
+
+/* ── POST /api/wifi — save WiFi credentials and reboot ── */
+
+static esp_err_t api_wifi_handler(httpd_req_t *req)
+{
+    char buf[256];
+    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
+    if (ret <= 0) return ESP_FAIL;
+    buf[ret] = '\0';
+
+    cJSON *root = cJSON_Parse(buf);
+    if (!root) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+
+    cJSON *ssid = cJSON_GetObjectItem(root, "ssid");
+    cJSON *pass = cJSON_GetObjectItem(root, "password");
+
+    if (!ssid || !cJSON_IsString(ssid) || !ssid->valuestring[0]) {
+        cJSON_Delete(root);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "SSID required");
+        return ESP_FAIL;
+    }
+
+    network_set_credentials(ssid->valuestring,
+                            (pass && cJSON_IsString(pass)) ? pass->valuestring : "");
+    cJSON_Delete(root);
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    send_json_response(req, resp);
+
+    ESP_LOGI(TAG, "WiFi credentials saved. Rebooting in 2 seconds...");
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    esp_restart();
+
     return ESP_OK;
 }
 
@@ -509,6 +578,7 @@ esp_err_t webserver_start(void)
         { .uri = "/api/config",      .method = HTTP_PUT,     .handler = api_put_config },
         { .uri = "/api/brightness",  .method = HTTP_PUT,     .handler = api_put_brightness },
         { .uri = "/api/ota",         .method = HTTP_POST,    .handler = api_ota_handler },
+        { .uri = "/api/wifi",        .method = HTTP_POST,    .handler = api_wifi_handler },
         { .uri = "/api/*",           .method = HTTP_OPTIONS, .handler = cors_handler },
     };
 

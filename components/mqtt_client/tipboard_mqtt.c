@@ -7,7 +7,8 @@
 
 static const char *TAG = "mqtt";
 
-#define MQTT_BROKER_URI   "mqtt://YOUR_MQTT_BROKER_IP:1883"
+/* Broker URI from device config — default fallback */
+#define MQTT_BROKER_DEFAULT   "mqtt://YOUR_MQTT_BROKER_IP:1883"
 #define TOPIC_STATUS      "tipboard/status"
 #define TOPIC_COMMAND     "tipboard/command"
 #define TOPIC_CALENDAR    "tipboard/calendar"
@@ -299,10 +300,12 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 
 esp_err_t tipboard_mqtt_init(void)
 {
-    ESP_LOGI(TAG, "Connecting to MQTT broker: %s", MQTT_BROKER_URI);
+    const device_config_t *cfg = config_get();
+    const char *broker = (cfg && cfg->mqtt_broker[0]) ? cfg->mqtt_broker : MQTT_BROKER_DEFAULT;
+    ESP_LOGI(TAG, "Connecting to MQTT broker: %s", broker);
 
     esp_mqtt_client_config_t config = {
-        .broker.address.uri = MQTT_BROKER_URI,
+        .broker.address.uri = broker,
         .network.reconnect_timeout_ms = 5000,
         .session.last_will = {
             .topic = TOPIC_AVAILABLE,
