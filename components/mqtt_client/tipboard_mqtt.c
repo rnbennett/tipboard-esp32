@@ -7,8 +7,8 @@
 
 static const char *TAG = "mqtt";
 
-/* Broker URI from device config — default fallback */
-#define MQTT_BROKER_DEFAULT   "mqtt://YOUR_MQTT_BROKER_IP:1883"
+/* Broker URI fallback if config is empty */
+#define MQTT_BROKER_DEFAULT   ""
 #define TOPIC_STATUS      "tipboard/status"
 #define TOPIC_COMMAND     "tipboard/command"
 #define TOPIC_CALENDAR    "tipboard/calendar"
@@ -302,6 +302,10 @@ esp_err_t tipboard_mqtt_init(void)
 {
     const device_config_t *cfg = config_get();
     const char *broker = (cfg && cfg->mqtt_broker[0]) ? cfg->mqtt_broker : MQTT_BROKER_DEFAULT;
+    if (!broker[0]) {
+        ESP_LOGW(TAG, "No MQTT broker configured — skipping MQTT");
+        return ESP_OK;
+    }
     ESP_LOGI(TAG, "Connecting to MQTT broker: %s", broker);
 
     esp_mqtt_client_config_t config = {
