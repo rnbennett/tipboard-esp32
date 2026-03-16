@@ -120,9 +120,9 @@ typedef struct {
     uint8_t dim_start_hour;
     uint8_t dim_end_hour;
     char timezone[48];                    /* POSIX TZ string e.g. "EST5EDT,M3.2.0,M11.1.0" */
-    char weather_lat[16];                 /* Latitude e.g. "0.0000" */
-    char weather_lon[16];                 /* Longitude e.g. "0.0000" */
-    char mqtt_broker[64];                 /* MQTT broker URI e.g. "mqtt://YOUR_MQTT_BROKER_IP:1883" */
+    char weather_lat[16];                 /* Latitude for weather API */
+    char weather_lon[16];                 /* Longitude for weather API */
+    char mqtt_broker[64];                 /* MQTT broker URI e.g. "mqtt://192.168.1.100:1883" */
     char device_name[32];                 /* Hostname + MQTT topic prefix e.g. "tipboard" */
 } device_config_t;
 
