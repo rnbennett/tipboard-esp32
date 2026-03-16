@@ -264,9 +264,13 @@ void state_tick(void)
         ESP_LOGI(TAG, "Auto-expire triggered, reverting to mode %d",
                  s_state.auto_expire_revert_to);
         s_state.auto_expire_enabled = false;
+        s_state.auto_expire_at = 0;
         s_state.mode = s_state.auto_expire_revert_to;
         s_state.priority = 2;
         s_state.timer_type = TIMER_NONE;
+        s_state.timer_started_at = 0;
+        s_state.timer_duration_sec = 0;
+        s_state.subtitle[0] = '\0';
         notify_change();
     }
 }
