@@ -16,6 +16,20 @@ if(EXISTS "${ENV_FILE}")
     endforeach()
 endif()
 
+# Board selection
+if(NOT DEFINED TIPBOARD_BOARD)
+    set(TIPBOARD_BOARD "p4")
+endif()
+message(STATUS "Board: ${TIPBOARD_BOARD}")
+
+if(TIPBOARD_BOARD STREQUAL "cyd")
+    set(BOARD_DEFINE "BOARD_CYD")
+elseif(TIPBOARD_BOARD STREQUAL "p4")
+    set(BOARD_DEFINE "BOARD_P4")
+else()
+    message(FATAL_ERROR "Unknown TIPBOARD_BOARD: ${TIPBOARD_BOARD}. Use 'p4' or 'cyd'.")
+endif()
+
 # Set defaults if not provided
 if(NOT DEFINED TIPBOARD_TIMEZONE)
     set(TIPBOARD_TIMEZONE "UTC0")
@@ -38,6 +52,7 @@ endif()
 
 # Build compile flags string
 add_compile_options(
+    "-D${BOARD_DEFINE}"
     "-DTIPBOARD_TIMEZONE=\"${TIPBOARD_TIMEZONE}\""
     "-DTIPBOARD_WEATHER_LAT=\"${TIPBOARD_WEATHER_LAT}\""
     "-DTIPBOARD_WEATHER_LON=\"${TIPBOARD_WEATHER_LON}\""

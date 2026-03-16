@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "board.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 
@@ -13,7 +14,12 @@ static const char *TAG = "ui_geo";
  * Total: ~50 line objects — well within LVGL limits.
  */
 
+/* Responsive hex size — smaller on CYD */
+#if BOARD_DISP_H_RES >= 1024
 #define HEX_RADIUS    140
+#else
+#define HEX_RADIUS    50
+#endif
 #define LINE_WIDTH    1
 
 /* Pointy-top hex vertex offsets * 1000 for integer math */

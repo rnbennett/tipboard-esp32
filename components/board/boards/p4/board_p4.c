@@ -1,7 +1,4 @@
 #include "board.h"
-
-#ifdef BOARD_P4
-
 #include "esp_log.h"
 #include "esp_check.h"
 #include "driver/ledc.h"
@@ -175,5 +172,3 @@ esp_err_t board_touch_init(esp_lcd_touch_handle_t *touch_handle)
     ESP_LOGI(TAG, "Touch initialized");
     return ESP_OK;
 }
-
-#endif /* BOARD_P4 */
