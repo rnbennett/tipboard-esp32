@@ -30,6 +30,10 @@ static void set_defaults(void)
     s_config.dim_brightness = 15;
     s_config.dim_start_hour = 22;
     s_config.dim_end_hour = 7;
+    strncpy(s_config.timezone, "EST5EDT,M3.2.0,M11.1.0", sizeof(s_config.timezone) - 1);
+    strncpy(s_config.weather_lat, "0.0000", sizeof(s_config.weather_lat) - 1);
+    strncpy(s_config.weather_lon, "0.0000", sizeof(s_config.weather_lon) - 1);
+    strncpy(s_config.mqtt_broker, "mqtt://YOUR_MQTT_BROKER_IP:1883", sizeof(s_config.mqtt_broker) - 1);
 }
 
 static esp_err_t save_config(void)
@@ -51,6 +55,10 @@ static esp_err_t save_config(void)
     cJSON_AddNumberToObject(root, "dim_brightness", s_config.dim_brightness);
     cJSON_AddNumberToObject(root, "dim_start_hour", s_config.dim_start_hour);
     cJSON_AddNumberToObject(root, "dim_end_hour", s_config.dim_end_hour);
+    cJSON_AddStringToObject(root, "timezone", s_config.timezone);
+    cJSON_AddStringToObject(root, "weather_lat", s_config.weather_lat);
+    cJSON_AddStringToObject(root, "weather_lon", s_config.weather_lon);
+    cJSON_AddStringToObject(root, "mqtt_broker", s_config.mqtt_broker);
 
     char *str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -118,6 +126,14 @@ static esp_err_t load_config(void)
     if ((item = cJSON_GetObjectItem(root, "dim_brightness"))) s_config.dim_brightness = item->valueint;
     if ((item = cJSON_GetObjectItem(root, "dim_start_hour"))) s_config.dim_start_hour = item->valueint;
     if ((item = cJSON_GetObjectItem(root, "dim_end_hour"))) s_config.dim_end_hour = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "timezone")) && cJSON_IsString(item))
+        strncpy(s_config.timezone, item->valuestring, sizeof(s_config.timezone) - 1);
+    if ((item = cJSON_GetObjectItem(root, "weather_lat")) && cJSON_IsString(item))
+        strncpy(s_config.weather_lat, item->valuestring, sizeof(s_config.weather_lat) - 1);
+    if ((item = cJSON_GetObjectItem(root, "weather_lon")) && cJSON_IsString(item))
+        strncpy(s_config.weather_lon, item->valuestring, sizeof(s_config.weather_lon) - 1);
+    if ((item = cJSON_GetObjectItem(root, "mqtt_broker")) && cJSON_IsString(item))
+        strncpy(s_config.mqtt_broker, item->valuestring, sizeof(s_config.mqtt_broker) - 1);
 
     cJSON_Delete(root);
     ESP_LOGI(TAG, "Config loaded");

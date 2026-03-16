@@ -1,4 +1,5 @@
 #include "ntp.h"
+#include "state.h"
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
@@ -28,8 +29,10 @@ esp_err_t ntp_init(void)
         return err;
     }
 
-    /* Eastern Time — configurable later via API */
-    setenv("TZ", "EST5EDT,M3.2.0,M11.1.0", 1);
+    /* Timezone from device config */
+    const device_config_t *cfg = config_get();
+    const char *tz = (cfg && cfg->timezone[0]) ? cfg->timezone : "EST5EDT,M3.2.0,M11.1.0";
+    setenv("TZ", tz, 1);
     tzset();
 
     return ESP_OK;

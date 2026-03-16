@@ -358,6 +358,33 @@ input[type="range"]::-webkit-slider-thumb {
         <input type="number" id="cfg-dim-end" value="7" min="0" max="23" style="width:60px">
       </div>
 
+      <h3 style="font-size:12px;color:var(--dim);letter-spacing:1px;margin:16px 0 8px">NETWORK</h3>
+      <div class="settings-grid">
+        <label>Timezone (POSIX):</label>
+        <input type="text" id="cfg-timezone" value="EST5EDT,M3.2.0,M11.1.0" style="width:200px">
+
+        <label>Weather latitude:</label>
+        <input type="text" id="cfg-weather-lat" value="0.0000" style="width:100px">
+
+        <label>Weather longitude:</label>
+        <input type="text" id="cfg-weather-lon" value="0.0000" style="width:100px">
+
+        <label>MQTT broker URI:</label>
+        <input type="text" id="cfg-mqtt-broker" value="mqtt://YOUR_MQTT_BROKER_IP:1883" style="width:200px">
+      </div>
+
+      <h3 style="font-size:12px;color:var(--dim);letter-spacing:1px;margin:16px 0 8px">WIFI</h3>
+      <div class="settings-grid">
+        <label>New WiFi SSID:</label>
+        <input type="text" id="cfg-wifi-ssid" placeholder="Leave blank to keep current">
+
+        <label>New WiFi Password:</label>
+        <input type="password" id="cfg-wifi-pass" placeholder="Leave blank to keep current">
+      </div>
+      <div style="margin-top:8px">
+        <button onclick="changeWifi()" class="danger">Change WiFi & Reboot</button>
+      </div>
+
       <div style="margin-top:16px">
         <button class="primary" onclick="saveConfig()">Save Settings</button>
         <span id="save-status" style="margin-left:8px;font-size:13px;color:var(--dim)"></span>
@@ -583,6 +610,10 @@ async function loadConfig() {
     document.getElementById('cfg-dim-brightness').value = cfg.dim_brightness || 15;
     document.getElementById('cfg-dim-start').value = cfg.dim_start_hour || 22;
     document.getElementById('cfg-dim-end').value = cfg.dim_end_hour || 7;
+    document.getElementById('cfg-timezone').value = cfg.timezone || 'EST5EDT,M3.2.0,M11.1.0';
+    document.getElementById('cfg-weather-lat').value = cfg.weather_lat || '0.0000';
+    document.getElementById('cfg-weather-lon').value = cfg.weather_lon || '0.0000';
+    document.getElementById('cfg-mqtt-broker').value = cfg.mqtt_broker || 'mqtt://YOUR_MQTT_BROKER_IP:1883';
   } catch(e) {
     console.error('Failed to load config', e);
   }
@@ -606,6 +637,10 @@ async function saveConfig() {
     dim_brightness: parseInt(document.getElementById('cfg-dim-brightness').value),
     dim_start_hour: parseInt(document.getElementById('cfg-dim-start').value),
     dim_end_hour: parseInt(document.getElementById('cfg-dim-end').value),
+    timezone: document.getElementById('cfg-timezone').value,
+    weather_lat: document.getElementById('cfg-weather-lat').value,
+    weather_lon: document.getElementById('cfg-weather-lon').value,
+    mqtt_broker: document.getElementById('cfg-mqtt-broker').value,
   };
 
   try {
@@ -625,6 +660,24 @@ async function saveConfig() {
     }
   } catch(e) {
     document.getElementById('save-status').textContent = 'Error saving';
+  }
+}
+
+// --- WiFi ---
+async function changeWifi() {
+  const ssid = document.getElementById('cfg-wifi-ssid').value;
+  if (!ssid) { alert('Enter a WiFi SSID'); return; }
+  if (!confirm('Change WiFi to "' + ssid + '" and reboot?')) return;
+  const pass = document.getElementById('cfg-wifi-pass').value;
+  try {
+    await fetch('/api/wifi', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ssid: ssid, password: pass})
+    });
+    alert('WiFi credentials saved. Device is rebooting...');
+  } catch(e) {
+    alert('Device is rebooting to connect to new WiFi');
   }
 }
 

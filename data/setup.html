@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tipboard Setup</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, sans-serif; background: #0D0B1A; color: #F0F0F0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.card { background: #1A1035; border: 1px solid #2A2545; border-radius: 12px; padding: 32px; max-width: 400px; width: 90%; }
+h1 { font-size: 24px; letter-spacing: 4px; margin-bottom: 8px; }
+p { color: #8888AA; font-size: 14px; margin-bottom: 24px; }
+label { display: block; font-size: 13px; color: #8888AA; margin-bottom: 4px; }
+input { width: 100%; padding: 10px 12px; border: 1px solid #2A2545; border-radius: 6px; background: #0D0B1A; color: #F0F0F0; font-size: 16px; margin-bottom: 16px; }
+input:focus { outline: none; border-color: #00A84E; }
+button { width: 100%; padding: 12px; border: none; border-radius: 6px; background: #00A84E; color: #000; font-size: 16px; font-weight: 600; cursor: pointer; }
+button:hover { opacity: 0.9; }
+#status { margin-top: 16px; font-size: 14px; color: #8888AA; }
+</style>
+</head><body>
+<div class="card">
+<h1>TIPBOARD</h1>
+<p>Connect to your WiFi network to get started.</p>
+<label>WiFi Network (SSID)</label>
+<input type="text" id="ssid" placeholder="Your WiFi name">
+<label>Password</label>
+<input type="password" id="pass" placeholder="WiFi password">
+<button onclick="save()">Connect</button>
+<div id="status"></div>
+</div>
+<script>
+async function save() {
+  const ssid = document.getElementById('ssid').value;
+  const pass = document.getElementById('pass').value;
+  const status = document.getElementById('status');
+  if (!ssid) { status.textContent = 'Enter WiFi name'; return; }
+  status.textContent = 'Saving...';
+  try {
+    const r = await fetch('/api/wifi', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ssid: ssid, password: pass})
+    });
+    const j = await r.json();
+    if (j.status === 'ok') {
+      status.textContent = 'Saved! Device will reboot and connect to ' + ssid + '...';
+    } else {
+      status.textContent = 'Error: ' + (j.message || 'unknown');
+    }
+  } catch(e) { status.textContent = 'Connection error'; }
+}
+</script>
+</body></html>
