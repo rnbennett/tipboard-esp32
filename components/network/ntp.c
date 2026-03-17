@@ -1,5 +1,6 @@
 #include "ntp.h"
 #include "state.h"
+#include "board.h"
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
@@ -73,6 +74,11 @@ void ntp_get_date_str(char *buf, size_t len)
     struct tm timeinfo;
     localtime_r(&now, &timeinfo);
 
-    /* "Sun Mar 15" format (no comma) */
+#if BOARD_DISP_H_RES < 1024
+    /* Compact: "3/16" */
+    snprintf(buf, len, "%d/%d", timeinfo.tm_mon + 1, timeinfo.tm_mday);
+#else
+    /* Full: "Sun Mar 15" */
     strftime(buf, len, "%a %b %d", &timeinfo);
+#endif
 }
