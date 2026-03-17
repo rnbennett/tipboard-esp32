@@ -489,6 +489,15 @@ void ui_update_time(const char *time_str, const char *date_str)
     /* Build WiFi suffix */
     char wifi_str[64];
     if (s_wifi_connected) {
+#if BOARD_DISP_H_RES < 1024
+        /* Small screens: always show IP (bars too small to tap for toggle) */
+        if (s_wifi_ip[0]) {
+            snprintf(wifi_str, sizeof(wifi_str), WIFI_ICON " %s", s_wifi_ip);
+        } else {
+            snprintf(wifi_str, sizeof(wifi_str), WIFI_ICON " %d%%",
+                     s_wifi_rssi_pct >= 0 ? s_wifi_rssi_pct : 0);
+        }
+#else
         if (s_wifi_show_ip && s_wifi_ip[0]) {
             const device_config_t *cfg = config_get();
             const char *hostname = (cfg && cfg->device_name[0]) ? cfg->device_name : "tipboard";
@@ -497,6 +506,7 @@ void ui_update_time(const char *time_str, const char *date_str)
             snprintf(wifi_str, sizeof(wifi_str), WIFI_ICON " %d%%",
                      s_wifi_rssi_pct >= 0 ? s_wifi_rssi_pct : 0);
         }
+#endif
     } else {
         snprintf(wifi_str, sizeof(wifi_str), "No WiFi");
     }
