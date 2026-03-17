@@ -16,7 +16,10 @@ if(EXISTS "${ENV_FILE}")
     endforeach()
 endif()
 
-# Board selection
+# Board selection — env var overrides .env file
+if(DEFINED ENV{TIPBOARD_BOARD})
+    set(TIPBOARD_BOARD "$ENV{TIPBOARD_BOARD}")
+endif()
 if(NOT DEFINED TIPBOARD_BOARD)
     set(TIPBOARD_BOARD "p4")
 endif()

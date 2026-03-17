@@ -13,8 +13,11 @@
 #if defined(BOARD_CYD)
 
 /* ── ESP32-2432S028R "Cheap Yellow Display" ─────────────── */
+/* Landscape 320x240 — LVGL rotates from native 240x320 portrait */
 #define BOARD_DISP_H_RES        320
 #define BOARD_DISP_V_RES        240
+#define BOARD_DISP_NATIVE_H     240
+#define BOARD_DISP_NATIVE_V     320
 #define BOARD_DISP_BL_GPIO      21
 
 /* ILI9341 SPI (HSPI) */

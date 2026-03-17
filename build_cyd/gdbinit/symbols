@@ -1,0 +1,9 @@
+
+
+# Load bootloader symbols
+set confirm off
+    add-symbol-file C:/Users/rnben/OneDrive/Documents/Development/tipboard/build_cyd/bootloader/bootloader.elf
+set confirm on
+
+# Load application symbols
+file C:/Users/rnben/OneDrive/Documents/Development/tipboard/build_cyd/tipboard.elf
