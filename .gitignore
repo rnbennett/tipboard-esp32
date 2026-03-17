@@ -3,7 +3,9 @@
 
 # ESP-IDF build artifacts
 build/
+build_cyd/
 sdkconfig
+sdkconfig.cyd
 sdkconfig.old
 managed_components/
 
