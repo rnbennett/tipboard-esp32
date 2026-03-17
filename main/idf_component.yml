@@ -1,11 +1,23 @@
 dependencies:
   lvgl/lvgl:
     version: "^9"
+  # P4 board only
   espressif/esp_lcd_jd9165:
     version: "*"
+    rules:
+      - if: "target in [esp32p4]"
   espressif/esp_lcd_touch_gt911:
     version: "*"
   espressif/esp_wifi_remote:
     version: "*"
+    rules:
+      - if: "target in [esp32p4]"
   espressif/esp_hosted:
     version: "*"
+    rules:
+      - if: "target in [esp32p4]"
+  # CYD board
+  atanisoft/esp_lcd_touch_xpt2046:
+    version: "*"
+    rules:
+      - if: "target in [esp32, esp32s3]"

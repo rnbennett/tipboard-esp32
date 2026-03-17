@@ -6,6 +6,7 @@
 #include "esp_timer.h"
 #include "esp_lcd_panel_ops.h"
 #include "lvgl.h"
+#include "draw/sw/lv_draw_sw_utils.h"
 #include "board.h"
 #include "state.h"
 #include "ui.h"
@@ -29,6 +30,13 @@ static int s_time_update_counter = 0;
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     esp_lcd_panel_handle_t panel = lv_display_get_user_data(disp);
+
+#ifdef BOARD_CYD
+    /* SPI ILI9341 needs byte-swapped RGB565 (big-endian) */
+    uint32_t size = (area->x2 - area->x1 + 1) * (area->y2 - area->y1 + 1);
+    lv_draw_sw_rgb565_swap(px_map, size);
+#endif
+
     esp_lcd_panel_draw_bitmap(panel,
         area->x1, area->y1,
         area->x2 + 1, area->y2 + 1,
@@ -154,9 +162,19 @@ void app_main(void)
     /* ── LVGL init ── */
     lv_init();
 
+#ifdef BOARD_CYD
+    /* CYD: create with native portrait size, LVGL rotates to landscape */
+    lv_display_t *disp = lv_display_create(BOARD_DISP_NATIVE_H, BOARD_DISP_NATIVE_V);
+#else
     lv_display_t *disp = lv_display_create(BOARD_DISP_H_RES, BOARD_DISP_V_RES);
+#endif
     lv_display_set_flush_cb(disp, lvgl_flush_cb);
     lv_display_set_user_data(disp, panel);
+
+#ifdef BOARD_CYD
+    /* CYD: rotate display to landscape via LVGL (not panel swap_xy) */
+    lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_90);
+#endif
 
     /* Draw buffers must be DMA-capable */
     int buf_lines = (BOARD_DISP_V_RES >= 600) ? 50 : 20;
