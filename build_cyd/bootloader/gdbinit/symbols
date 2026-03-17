@@ -1,0 +1,9 @@
+
+
+# Load bootloader symbols
+set confirm off
+    # Bootloader elf was not found
+set confirm on
+
+# Load application symbols
+file C:/Users/rnben/OneDrive/Documents/Development/tipboard/build_cyd/bootloader/bootloader.elf
