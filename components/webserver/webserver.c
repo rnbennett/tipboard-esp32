@@ -319,8 +319,8 @@ static esp_err_t api_put_config(httpd_req_t *req)
     cJSON_Delete(root);
     config_set(&cfg);
 
-    /* Update state manager with new defaults */
-    state_set_default_mode(cfg.default_mode);
+    /* Notify UI so mirror mode indicator and other config-driven UI updates immediately */
+    state_notify_change();
 
     return api_get_config(req);
 }
@@ -576,6 +576,23 @@ static esp_err_t api_wifi_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/* ── POST /api/reboot — restart the device ── */
+
+static esp_err_t api_reboot_handler(httpd_req_t *req)
+{
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddStringToObject(resp, "status", "ok");
+    cJSON_AddStringToObject(resp, "message", "Rebooting in 2 seconds...");
+    send_json_response(req, resp);
+
+    ESP_LOGI(TAG, "Reboot requested via API");
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    esp_restart();
+
+    return ESP_OK;
+}
+
 /* ── CORS preflight ── */
 
 static esp_err_t cors_handler(httpd_req_t *req)
@@ -613,6 +630,7 @@ esp_err_t webserver_start(void)
         { .uri = "/api/brightness",  .method = HTTP_PUT,     .handler = api_put_brightness },
         { .uri = "/api/ota",         .method = HTTP_POST,    .handler = api_ota_handler },
         { .uri = "/api/wifi",        .method = HTTP_POST,    .handler = api_wifi_handler },
+        { .uri = "/api/reboot",     .method = HTTP_POST,    .handler = api_reboot_handler },
         { .uri = "/api/*",           .method = HTTP_OPTIONS, .handler = cors_handler },
     };
 

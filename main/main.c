@@ -9,6 +9,7 @@
 #include "draw/sw/lv_draw_sw_utils.h"
 #include "board.h"
 #include "state.h"
+#include "persist.h"
 #include "ui.h"
 #include "network.h"
 #include "ntp.h"
@@ -203,6 +204,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, 2000));
 
     /* ── Config + State init ── */
+    ESP_ERROR_CHECK(persist_init());  /* Mount LittleFS first — config and state both need it */
     config_init();  /* Load device config from LittleFS (must be before state_init) */
     ESP_ERROR_CHECK(state_init());
     state_register_change_cb(on_state_change, NULL);
