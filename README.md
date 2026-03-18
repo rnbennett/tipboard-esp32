@@ -5,7 +5,7 @@ A desk status indicator board built on ESP32-P4 and ESP32, with LVGL UI, web das
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.5.3-blue.svg)
 
-<!-- TODO: Add photo of the board here -->
+![tipboard-esp32 in Meeting mode — P4 primary display with CYD mirror](docs/tipboard-meeting.jpg)
 
 ## Why I Built This
 
