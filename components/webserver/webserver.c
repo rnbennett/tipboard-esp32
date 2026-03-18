@@ -211,12 +211,33 @@ static esp_err_t api_get_config(httpd_req_t *req)
 
 static esp_err_t api_put_config(httpd_req_t *req)
 {
-    char buf[1024];
-    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
-    if (ret <= 0) return ESP_FAIL;
-    buf[ret] = '\0';
+    int total_len = req->content_len;
+    if (total_len <= 0 || total_len >= 2048) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid content length");
+        return ESP_FAIL;
+    }
+
+    char *buf = malloc(total_len + 1);
+    if (!buf) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OOM");
+        return ESP_FAIL;
+    }
+
+    int received = 0;
+    while (received < total_len) {
+        int ret = httpd_req_recv(req, buf + received, total_len - received);
+        if (ret <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) continue;
+            free(buf);
+            httpd_resp_send_err(req, HTTPD_408_REQ_TIMEOUT, "Receive failed");
+            return ESP_FAIL;
+        }
+        received += ret;
+    }
+    buf[received] = '\0';
 
     cJSON *root = cJSON_Parse(buf);
+    free(buf);
     if (!root) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
         return ESP_FAIL;
