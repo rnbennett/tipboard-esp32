@@ -19,3 +19,14 @@ managed_components/
 # OS
 .DS_Store
 Thumbs.db
+
+# Internal development
+_disabled/
+docs/superpowers/
+sdkconfig.defaults.working
+
+# Alternate/experimental files
+main/main_minimal.c
+
+# Debug scripts
+tools/serial_read_*.ps1
