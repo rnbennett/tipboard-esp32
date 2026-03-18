@@ -32,7 +32,7 @@
           {% endif %}
 
 # 2. Auto-switch to Meeting mode when a REAL calendar event starts
-#    (skips fake Friday-managed blocker events)
+#    (skips ⚡-prefixed personal blocker events)
 - alias: "Tipboard: Meeting Auto-Switch"
   trigger:
     - platform: calendar
