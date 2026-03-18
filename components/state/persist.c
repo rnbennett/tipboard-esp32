@@ -15,6 +15,8 @@ static bool s_mounted = false;
 
 esp_err_t persist_init(void)
 {
+    if (s_mounted) return ESP_OK;  /* Already mounted — idempotent */
+
     esp_vfs_littlefs_conf_t conf = {
         .base_path = "/storage",
         .partition_label = "storage",
