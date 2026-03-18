@@ -246,6 +246,11 @@ esp_err_t state_register_change_cb(state_change_cb_t cb, void *user_data)
     return ESP_OK;
 }
 
+void state_notify_change(void)
+{
+    notify_change();
+}
+
 void state_tick(void)
 {
     int64_t now = now_monotonic_sec();

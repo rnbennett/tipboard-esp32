@@ -330,8 +330,17 @@ esp_err_t ui_init(void)
     lv_obj_add_event_cb(s_hero, hero_gesture_cb, LV_EVENT_GESTURE, NULL);
     lv_obj_add_event_cb(s_hero, hero_longpress_cb, LV_EVENT_LONG_PRESSED, NULL);
 
-    /* Pomodoro trigger on bottom bar */
-    lv_obj_add_event_cb(s_bottom_bar, bottom_bar_tap_cb, LV_EVENT_SHORT_CLICKED, NULL);
+    /* Pomodoro trigger on bottom bar (disabled in mirror mode) */
+    const device_config_t *init_cfg = config_get();
+    if (init_cfg && init_cfg->mirror_mode) {
+        if (init_cfg->mirror_source[0]) {
+            lv_label_set_text_fmt(s_pomo_label, "MIRROR  |  following %s", init_cfg->mirror_source);
+        } else {
+            lv_label_set_text(s_pomo_label, "MIRROR  |  no source configured");
+        }
+    } else {
+        lv_obj_add_event_cb(s_bottom_bar, bottom_bar_tap_cb, LV_EVENT_SHORT_CLICKED, NULL);
+    }
 
     lv_scr_load(s_screen);
 
@@ -400,19 +409,41 @@ void ui_update(const status_state_t *state)
 
     if (has_subtitle && has_timer) {
         /* Meeting with subtitle + countdown */
+#if BOARD_DISP_H_RES >= 1024
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -80);
         lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 20);
+#else
+        lv_obj_align(s_mode_label, LV_ALIGN_TOP_MID, 0, STRIPE_H + 4);
+        lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 5);
+#endif
     } else if (has_subtitle) {
+#if BOARD_DISP_H_RES >= 1024
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -50);
         lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 40);
+#else
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -20);
+        lv_obj_align(s_subtitle_label, LV_ALIGN_CENTER, 0, 18);
+#endif
     } else if (has_timer) {
+#if BOARD_DISP_H_RES >= 1024
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -50);
+#else
+        lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, -25);
+#endif
     } else {
         lv_obj_align(s_mode_label, LV_ALIGN_CENTER, 0, 0);
     }
 
-    /* Bottom bar: Pomodoro status OR next calendar event */
-    if (state->mode == MODE_POMODORO) {
+    /* Bottom bar: Mirror indicator OR Pomodoro status OR calendar event */
+    const device_config_t *bottom_cfg = config_get();
+    if (bottom_cfg && bottom_cfg->mirror_mode) {
+        /* Mirror mode: keep the mirror indicator, don't show pomodoro */
+        if (bottom_cfg->mirror_source[0]) {
+            lv_label_set_text_fmt(s_pomo_label, "MIRROR  |  following %s", bottom_cfg->mirror_source);
+        } else {
+            lv_label_set_text(s_pomo_label, "MIRROR  |  no source configured");
+        }
+    } else if (state->mode == MODE_POMODORO) {
         if (state->pomo_phase == POMO_WORK) {
             lv_label_set_text(s_pomo_label, "Working... (tap to cancel)");
         } else if (state->pomo_phase == POMO_BREAK) {
@@ -470,7 +501,11 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
         /* Meeting/other countdown: just text, no arc */
         ui_timer_arc_update(0, lv_color_black(), false);
         bool has_sub = (state->subtitle[0] != '\0');
+#if BOARD_DISP_H_RES >= 1024
         lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, has_sub ? 70 : 40);
+#else
+        lv_obj_align(s_timer_label, LV_ALIGN_CENTER, 0, has_sub ? 38 : 20);
+#endif
     }
 }
 

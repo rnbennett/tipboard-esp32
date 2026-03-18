@@ -46,17 +46,15 @@ Then run the full build+flash command above.
 - **Flash:** 16MB QIO
 - **Power:** Board needs >600mA — use a quality USB cable on a motherboard port, not a hub. Insufficient power causes USB connect/disconnect loops.
 
-### MIPI-DSI Display Troubleshooting
+### ESP32-P4 MIPI-DSI Display Troubleshooting
 
 The MIPI DSI FPC cable is extremely sensitive. If the display stops working:
 
 1. **Check USB cable/port** — must provide >600mA. Constant Windows USB chimes = power issue.
-2. **Reseat the FPC cable** — open the white FPC connector latch on the PCB, pull the orange flex cable out, push it back in firmly, close latch. This is the #1 cause of "display init succeeds but screen is blank."
-3. **Verify `BOARD_P4` is defined** — check `compile_commands.json` for `-DBOARD_P4` in the compile flags. Without it, `board.c` compiles to an empty file (wrapped in `#ifdef BOARD_P4`).
+2. **Verify `BOARD_P4` is defined** — check `compile_commands.json` for `-DBOARD_P4` in the compile flags. Without it, `board.c` compiles to an empty file (wrapped in `#ifdef BOARD_P4`).
+3. Verify the JD9165 Vendor Init Sequence is correct
 4. **Diagnostic signals:**
    - "White screen then black" = DSI link works, panel initialized, showing framebuffer (all zeros = black)
-   - "Completely blank/dark" = DSI signal not reaching panel (cable issue)
-   - Backlight blinks but no image = DSI data lanes broken, backlight pins (29-30 on FPC) are separate
 
 ### JD9165 Vendor Init Sequence (CRITICAL)
 
