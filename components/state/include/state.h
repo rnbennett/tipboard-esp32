@@ -7,12 +7,12 @@
 /* Seven status modes matching the WDW Monorail color fleet */
 typedef enum {
     MODE_AVAILABLE = 0,   /* Green — Monorail Green */
-    MODE_FOCUSED,         /* Amber/Gold — Monorail Gold */
+    MODE_FOCUSED,         /* Gold — Monorail Gold */
     MODE_MEETING,         /* Red — Monorail Red */
-    MODE_AWAY,            /* Cool Gray — Monorail Silver */
+    MODE_AWAY,            /* Blue — Monorail Blue */
     MODE_POMODORO,        /* Red→Green progression */
-    MODE_CUSTOM,          /* Coral/Pink — Monorail Coral */
-    MODE_STREAMING,       /* Bright Red/Pink — Monorail Coral (brighter) */
+    MODE_CUSTOM,          /* Teal — Monorail Teal */
+    MODE_STREAMING,       /* Silver — Monorail Silver */
     MODE_COUNT
 } status_mode_t;
 
@@ -99,6 +99,9 @@ esp_err_t state_clear_auto_expire(void);
 
 /* Register callback for state changes (UI uses this) */
 esp_err_t state_register_change_cb(state_change_cb_t cb, void *user_data);
+
+/* Force a state change notification (e.g., after config update) */
+void state_notify_change(void);
 
 /* Called periodically (e.g., every 1s from LVGL timer) to check auto-expire and pomodoro transitions */
 void state_tick(void);
