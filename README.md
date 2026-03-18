@@ -9,7 +9,7 @@ A desk status indicator board built on ESP32-P4 and ESP32, with LVGL UI, web das
 
 ## Why I Built This
 
-I work from home and people in my house constantly walk into my office — to grab a drink from the mini-fridge, pet the dog, or just see what I'm up to. Sometimes they end up on camera during meetings. Inspired by the [Busy Bar](https://thebusybar.com/) project, I built an inexpensive alternative using hardware from AliExpress that shows my current status. Mirror displays placed around the house (like the kitchen) let everyone check before heading to my office.
+I work from home and people in my house constantly walk into my office — to grab a drink from the mini-fridge, pet the dog, or just see what I'm up to. Sometimes they end up on camera during meetings. Inspired by the [Busy Bar](https://busy.bar/) project, I built an inexpensive alternative using hardware from AliExpress that shows my current status. Mirror displays placed around the house (like the kitchen) let everyone check before heading to my office.
 
 ## Features
 
