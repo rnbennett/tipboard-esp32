@@ -1,4 +1,6 @@
-# --Tipboard Build + Flash (P4 - ESP32-P4) --
+# --Tipboard Full Build + Flash (P4 - ESP32-P4) --
+# Includes bootloader + partition table + app + ota_data.
+# WARNING: This will reset device settings (LittleFS will be reformatted).
 # Edit the ESP-IDF paths below to match your installation.
 # Or set TIPBOARD_PORT in your .env file to override the COM port.
 
@@ -27,9 +29,9 @@ Write-Host "=== NINJA BUILD ==="
 & ninja -C build
 if ($LASTEXITCODE -ne 0) { Write-Host "BUILD_FAILED"; exit 1 }
 
-Write-Host "=== FLASH APP ONLY - settings preserved ==="
-Write-Host "    (Use build_flash_full.ps1 to include partition table + ota_data)"
-& $PYTHON "$env:IDF_PATH\components\esptool_py\esptool\esptool.py" -p $TIPBOARD_PORT -b 460800 --before default_reset --after hard_reset --chip esp32p4 write_flash --flash_mode dio --flash_freq 80m --flash_size 16MB 0x2000 build\bootloader\bootloader.bin 0x20000 build\tipboard.bin
+Write-Host "=== FULL FLASH - bootloader + partition table + app + ota_data ==="
+Write-Host "WARNING: This will reset device settings (LittleFS will be reformatted)"
+& $PYTHON "$env:IDF_PATH\components\esptool_py\esptool\esptool.py" -p $TIPBOARD_PORT -b 460800 --before default_reset --after hard_reset --chip esp32p4 write_flash --flash_mode dio --flash_freq 80m --flash_size 16MB 0x2000 build\bootloader\bootloader.bin 0x20000 build\tipboard.bin 0x8000 build\partition_table\partition-table.bin 0xf000 build\ota_data_initial.bin
 if ($LASTEXITCODE -ne 0) { Write-Host "FLASH_FAILED"; exit 1 }
 
 Write-Host "=== ALL DONE ==="
