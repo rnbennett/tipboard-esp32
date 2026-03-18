@@ -63,7 +63,7 @@ I work from home and people in my house constantly walk into my office — to gr
 
 1. Clone this repo:
    ```bash
-   git clone https://github.com/<your-username>/tipboard-esp32.git
+   git clone https://github.com/rnbennett/tipboard-esp32.git
    cd tipboard-esp32
    ```
 
