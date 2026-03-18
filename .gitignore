@@ -21,6 +21,7 @@ managed_components/
 Thumbs.db
 
 # Internal development
+.superpowers/
 _disabled/
 docs/superpowers/
 sdkconfig.defaults.working
