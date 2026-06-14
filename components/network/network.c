@@ -9,6 +9,7 @@
 #include "nvs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "esp_timer.h"
 
 static const char *TAG = "network";
 
@@ -27,6 +28,10 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
+static esp_timer_handle_t s_reconnect_timer = NULL;
+/* Fires off the event-loop task so the reconnect never blocks event dispatch. */
+static void reconnect_timer_cb(void *arg) { esp_wifi_connect(); }
+
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)
 {
@@ -42,8 +47,13 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
             if (s_retry_count < MAX_RETRY) {
                 s_retry_count++;
                 ESP_LOGI(TAG, "Retry WiFi connection (%d/%d)", s_retry_count, MAX_RETRY);
-                vTaskDelay(pdMS_TO_TICKS(2000));
-                esp_wifi_connect();
+                /* Schedule the reconnect — never vTaskDelay in the event task,
+                 * which would stall all event dispatch (IP events, etc.). */
+                if (s_reconnect_timer) {
+                    esp_timer_start_once(s_reconnect_timer, 2000000);
+                } else {
+                    esp_wifi_connect();
+                }
             } else {
                 ESP_LOGW(TAG, "WiFi connection failed after %d retries", MAX_RETRY);
                 xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
@@ -75,6 +85,12 @@ esp_err_t network_init(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     s_wifi_event_group = xEventGroupCreate();
+
+    const esp_timer_create_args_t rc_args = {
+        .callback = reconnect_timer_cb,
+        .name = "wifi_reconnect",
+    };
+    esp_timer_create(&rc_args, &s_reconnect_timer);
 
     return ESP_OK;
 }
@@ -145,20 +161,28 @@ esp_err_t network_wifi_connect(void)
     ESP_LOGI(TAG, "Hostname: %s", hostname);
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    if ((err = esp_wifi_init(&cfg)) != ESP_OK) {
+        ESP_LOGE(TAG, "esp_wifi_init failed: %s — continuing without WiFi", esp_err_to_name(err));
+        return err;
+    }
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
-                    &wifi_event_handler, NULL, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
-                    &wifi_event_handler, NULL, NULL));
+    esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID,
+                    &wifi_event_handler, NULL, NULL);
+    esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP,
+                    &wifi_event_handler, NULL, NULL);
 
     wifi_config_t wifi_config = {0};
     strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid) - 1);
     strncpy((char *)wifi_config.sta.password, pass, sizeof(wifi_config.sta.password) - 1);
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    /* Degrade gracefully instead of panicking — WiFi runs over the C6 via
+     * esp_hosted/SDIO, so these calls can fail transiently. */
+    if ((err = esp_wifi_set_mode(WIFI_MODE_STA)) != ESP_OK ||
+        (err = esp_wifi_set_config(WIFI_IF_STA, &wifi_config)) != ESP_OK ||
+        (err = esp_wifi_start()) != ESP_OK) {
+        ESP_LOGE(TAG, "WiFi STA start failed: %s", esp_err_to_name(err));
+        return err;
+    }
 
     return ESP_OK;
 }

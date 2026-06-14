@@ -25,6 +25,7 @@ static esp_lcd_touch_handle_t s_touch = NULL;
 /* Thread-safe state→UI marshalling: API calls on Core 1 set this flag,
  * the LVGL timer on Core 0 picks it up and calls ui_update(). */
 static atomic_bool s_state_dirty = false;
+static atomic_bool s_mqtt_dirty = false;  /* deferred MQTT publish — avoids reentrant publish from the MQTT event task */
 static int s_time_update_counter = 0;
 
 /* ── LVGL display flush callback ── */
@@ -82,9 +83,13 @@ static void lvgl_tick_cb(void *arg)
 /* ── State change callback — may run from any task ── */
 static void on_state_change(const status_state_t *new_state, void *user_data)
 {
+    /* Runs from any task (httpd / MQTT / LVGL). WS push is async + thread-safe,
+     * so it stays here for immediacy. MQTT publish is DEFERRED to the LVGL timer:
+     * calling esp_mqtt_client_publish() from inside the MQTT event handler (the
+     * command path lands here) is reentrant into the mqtt task and can stall it. */
     s_state_dirty = true;
+    s_mqtt_dirty = true;
     webserver_notify_clients();
-    tipboard_mqtt_publish_state();
 }
 
 /* ── 1-second LVGL timer: state tick + timer + time + WiFi display ── */
@@ -94,6 +99,12 @@ static void one_second_lv_timer_cb(lv_timer_t *timer)
     if (atomic_exchange(&s_state_dirty, false)) {
         ui_update(state_get());
     }
+    /* Deferred MQTT publish (decoupled from the MQTT event task — see on_state_change) */
+    if (atomic_exchange(&s_mqtt_dirty, false)) {
+        tipboard_mqtt_publish_state();
+    }
+    /* Apply any calendar update stashed by the MQTT task (LVGL-task-only render) */
+    ui_apply_pending_calendar();
 
     state_tick();
 

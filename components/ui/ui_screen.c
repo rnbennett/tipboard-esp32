@@ -74,9 +74,11 @@ static lv_obj_t *s_divider_bottom = NULL;
 static status_mode_t s_current_mode = MODE_COUNT;
 static pomo_phase_t s_current_pomo_phase = POMO_IDLE;
 
-/* Calendar event cache */
+/* Calendar event cache (written by MQTT task via ui_update_calendar, rendered
+ * on the LVGL task via ui_apply_pending_calendar) */
 static char s_cal_title[64] = "";
 static char s_cal_time[16] = "";
+static volatile bool s_cal_dirty = false;
 
 /* WiFi display toggle */
 static bool s_wifi_show_ip = false;
@@ -584,10 +586,10 @@ void ui_update_weather(float temp_f, const char *icon, int precip_pct, bool vali
     }
 }
 
+/* Called from the MQTT task — must NOT touch LVGL. Stash strings + flag only;
+ * ui_apply_pending_calendar() (LVGL task) renders them. */
 void ui_update_calendar(const char *title, const char *time_str)
 {
-    if (!s_pomo_label) return;
-
     if (title && title[0]) {
         strncpy(s_cal_title, title, sizeof(s_cal_title) - 1);
         s_cal_title[sizeof(s_cal_title) - 1] = '\0';
@@ -601,6 +603,16 @@ void ui_update_calendar(const char *title, const char *time_str)
         s_cal_title[0] = '\0';
         s_cal_time[0] = '\0';
     }
+    s_cal_dirty = true;
+}
+
+/* Runs on the LVGL task (from the 1-second timer). Renders stashed calendar text
+ * — the only place that touches the bottom-bar label for calendar updates. */
+void ui_apply_pending_calendar(void)
+{
+    if (!s_cal_dirty) return;
+    s_cal_dirty = false;
+    if (!s_pomo_label) return;
 
     /* Only update bottom bar if not in Pomodoro (Pomodoro owns the bottom bar) */
     const status_state_t *state = state_get();
