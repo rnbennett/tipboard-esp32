@@ -100,6 +100,10 @@ esp_err_t persist_load(status_state_t *state)
         ESP_LOGI(TAG, "No saved state found");
         return ESP_ERR_NOT_FOUND;
     }
+    if (st.st_size <= 0 || st.st_size > 4096) {
+        ESP_LOGW(TAG, "State file size %ld out of range, ignoring", (long)st.st_size);
+        return ESP_FAIL;
+    }
 
     FILE *f = fopen(STATE_PATH, "r");
     if (!f) return ESP_FAIL;
@@ -120,8 +124,9 @@ esp_err_t persist_load(status_state_t *state)
 
     cJSON *item;
     if ((item = cJSON_GetObjectItem(root, "mode"))) state->mode = item->valueint;
-    if ((item = cJSON_GetObjectItem(root, "subtitle"))) {
+    if ((item = cJSON_GetObjectItem(root, "subtitle")) && cJSON_IsString(item) && item->valuestring) {
         strncpy(state->subtitle, item->valuestring, sizeof(state->subtitle) - 1);
+        state->subtitle[sizeof(state->subtitle) - 1] = '\0';
     }
     if ((item = cJSON_GetObjectItem(root, "timer_type"))) state->timer_type = item->valueint;
     if ((item = cJSON_GetObjectItem(root, "timer_started_at"))) state->timer_started_at = (int64_t)item->valuedouble;

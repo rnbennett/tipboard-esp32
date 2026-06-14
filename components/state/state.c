@@ -77,6 +77,16 @@ esp_err_t state_init(void)
         s_state.mode = s_default_mode;
     }
 
+    /* Apply configured pomodoro durations (config_init runs before state_init).
+     * Without this, config pomo_work_min/break_min were dead — start always
+     * used the hardcoded 25/5 defaults. Timer state is cleared on reboot anyway,
+     * so seeding from config (not the restored running-timer value) is correct. */
+    const device_config_t *cfg = config_get();
+    if (cfg && cfg->pomo_work_min > 0) {
+        s_state.pomo_work_sec = cfg->pomo_work_min * 60;
+        s_state.pomo_break_sec = cfg->pomo_break_min * 60;
+    }
+
     return ESP_OK;
 }
 
@@ -126,6 +136,7 @@ esp_err_t state_set_mode(status_mode_t mode, status_source_t source)
         if (cfg && cfg->mode_subtitles[mode][0]) {
             strncpy(s_state.subtitle, cfg->mode_subtitles[mode],
                     sizeof(s_state.subtitle) - 1);
+            s_state.subtitle[sizeof(s_state.subtitle) - 1] = '\0';
         }
     }
 

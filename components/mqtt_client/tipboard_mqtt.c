@@ -342,12 +342,18 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 
     case MQTT_EVENT_DATA:
         if (event->topic_len > 0) {
+            int tlen = event->topic_len;
+            /* Exact match: incoming topic length must equal the subscribed topic
+             * length, else a prefix could misroute (e.g. command vs status). */
             if (s_mirror_mode &&
-                strncmp(event->topic, MIRROR_STATUS_TOPIC, event->topic_len) == 0) {
+                (int)strlen(MIRROR_STATUS_TOPIC) == tlen &&
+                strncmp(event->topic, MIRROR_STATUS_TOPIC, tlen) == 0) {
                 handle_mirror_status(event->data, event->data_len);
-            } else if (strncmp(event->topic, TOPIC_COMMAND, event->topic_len) == 0) {
+            } else if ((int)strlen(TOPIC_COMMAND) == tlen &&
+                       strncmp(event->topic, TOPIC_COMMAND, tlen) == 0) {
                 handle_command(event->data, event->data_len);
-            } else if (strncmp(event->topic, TOPIC_CALENDAR, event->topic_len) == 0) {
+            } else if ((int)strlen(TOPIC_CALENDAR) == tlen &&
+                       strncmp(event->topic, TOPIC_CALENDAR, tlen) == 0) {
                 handle_calendar(event->data, event->data_len);
             }
         }

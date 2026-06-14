@@ -7,6 +7,9 @@
 #include "esp_http_server.h"
 #include "esp_ota_ops.h"
 #include "cJSON.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "lwip/sockets.h"
 
 static const char *TAG = "webserver";
 static httpd_handle_t s_server = NULL;
@@ -373,15 +376,41 @@ static esp_err_t api_put_brightness(httpd_req_t *req)
 #define MAX_WS_CLIENTS 4
 static int s_ws_fds[MAX_WS_CLIENTS];
 static int s_ws_count = 0;
+static SemaphoreHandle_t s_ws_lock = NULL;   /* guards s_ws_fds[]/s_ws_count */
+
+static void ws_remove_fd_locked(int fd)
+{
+    int n = 0;
+    for (int i = 0; i < s_ws_count; i++) {
+        if (s_ws_fds[i] != fd) s_ws_fds[n++] = s_ws_fds[i];
+    }
+    s_ws_count = n;
+}
+
+/* httpd invokes this whenever it closes/purges a socket (LRU purge, keep-alive
+ * timeout, client close). Prune our tracking array, then do the real close —
+ * installing a custom close_fn overrides httpd's own socket close. */
+static void ws_close_fn(httpd_handle_t hd, int sockfd)
+{
+    if (s_ws_lock) xSemaphoreTake(s_ws_lock, portMAX_DELAY);
+    ws_remove_fd_locked(sockfd);
+    if (s_ws_lock) xSemaphoreGive(s_ws_lock);
+    close(sockfd);
+}
 
 static esp_err_t ws_handler(httpd_req_t *req)
 {
     if (req->method == HTTP_GET) {
         int fd = httpd_req_to_sockfd(req);
+        if (s_ws_lock) xSemaphoreTake(s_ws_lock, portMAX_DELAY);
+        ws_remove_fd_locked(fd);   /* dedup: drop any stale entry for this fd */
         if (s_ws_count < MAX_WS_CLIENTS) {
             s_ws_fds[s_ws_count++] = fd;
             ESP_LOGI(TAG, "WebSocket client connected (fd=%d, total=%d)", fd, s_ws_count);
+        } else {
+            ESP_LOGW(TAG, "WebSocket client rejected (fd=%d): max clients", fd);
         }
+        if (s_ws_lock) xSemaphoreGive(s_ws_lock);
         return ESP_OK;
     }
 
@@ -414,6 +443,7 @@ void webserver_notify_clients(void)
         .len = strlen(str),
     };
 
+    if (s_ws_lock) xSemaphoreTake(s_ws_lock, portMAX_DELAY);
     int new_count = 0;
     for (int i = 0; i < s_ws_count; i++) {
         esp_err_t err = httpd_ws_send_frame_async(s_server, s_ws_fds[i], &ws_pkt);
@@ -424,6 +454,7 @@ void webserver_notify_clients(void)
         }
     }
     s_ws_count = new_count;
+    if (s_ws_lock) xSemaphoreGive(s_ws_lock);
 
     cJSON_free(str);
     cJSON_Delete(json);
@@ -608,9 +639,13 @@ static esp_err_t cors_handler(httpd_req_t *req)
 
 esp_err_t webserver_start(void)
 {
+    if (!s_ws_lock) s_ws_lock = xSemaphoreCreateMutex();
+
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.max_uri_handlers = 16;
     config.uri_match_fn = httpd_uri_match_wildcard;
+    config.lru_purge_enable = true;   /* evict stalest socket instead of refusing new connections */
+    config.close_fn = ws_close_fn;    /* keep s_ws_fds[] in sync on every socket close */
 
     esp_err_t err = httpd_start(&s_server, &config);
     if (err != ESP_OK) {
@@ -663,7 +698,9 @@ esp_err_t webserver_stop(void)
     if (s_server) {
         httpd_stop(s_server);
         s_server = NULL;
+        if (s_ws_lock) xSemaphoreTake(s_ws_lock, portMAX_DELAY);
         s_ws_count = 0;
+        if (s_ws_lock) xSemaphoreGive(s_ws_lock);
     }
     return ESP_OK;
 }
