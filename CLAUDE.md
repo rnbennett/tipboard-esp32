@@ -103,11 +103,13 @@ Managed components (auto-downloaded by ESP-IDF component manager):
 
 ### C6 Co-processor (WiFi/BLE)
 
-- Connected to P4 via SDIO: CLK=18, CMD=19, D0-D3=14-17, Reset=GPIO 54
-- No USB port — cannot be flashed with esptool directly
-- Flash via SDIO OTA: use `esp_hosted` example `host_performs_slave_ota` (partition method)
-- C6 runs esp_hosted slave firmware (currently v2.3.2)
-- Factory C6 binary (`JC1060P470_C6.bin` in cheops repo) is NOT a valid OTA image — it's a stub. Must build proper slave firmware from `esp_hosted:slave` example if upgrading.
+- Connected to P4 via SDIO: CLK=18, CMD=19, D0-D3=14-17, Reset=GPIO 54 (active **high**)
+- No USB port — cannot be flashed with esptool directly; only over SDIO from the P4
+- **C6 runs esp_hosted slave firmware v2.9.7** (upgraded 2026-06-14 from the factory v2.3.2)
+- The factory v2.3.2 lacked SDIO transport failure-detection/auto-reinit (added in 2.9.4+); its absence was the root cause of the "P4 freezes — touch works but web/MQTT die" bug (an RPC stall over SDIO kills the network surfaces while LVGL/touch survive). The upgrade fixes it.
+- **To (re)flash the C6:** use the CrowPanel SDIO-OTA tool (`github.com/lboshuizen/crowpanel-p4-c6-sdio-ota`), cloned at `../crowpanel-p4-c6-sdio-ota` with our adapted `build_c6ota.ps1`/`flash_c6ota.ps1`. Use the prebuilt v2.9.7 C6 binary (`esphome.github.io/esp-hosted-firmware/v2.9.7/network_adapter_esp32c6.bin`, SHA256 `c9286c98…`), **not** a self-built or factory binary (`JC1060P470_C6.bin` is a stub, not a valid OTA image). The adapted sdkconfig keeps the tool's conservative 1-bit/10MHz OTA SDIO but uses our reset pin (GPIO54, active-high) and our HEX-PSRAM/chip-rev boot config. After `ota_end` the image is written **and** bootable; the separate `ota_activate` RPC returns `NOT_SUPPORTED` on the 2.3.x slave (it's for slave >2.5.X) — that is expected, just reset the C6 (the OTA app does this on boot) to load 2.9.7.
+- **Production esp_hosted config:** `CONFIG_ESP_HOSTED_SLAVE_RESET_ON_EVERY_HOST_BOOTUP=y` (resets the C6 for a clean handshake each boot). Do **not** re-add `SLAVE_RESET_ONLY_IF_NECESSARY` + `HOST_RESTART_NO_COMMUNICATION` — with the upgraded C6 that combo boot-loops (host restarts itself on the no-comm timeout without ever resetting the wedged C6), and esp_hosted makes the two strategies mutually exclusive.
+- Host is still esp_hosted 2.12.3, so the boot log prints a harmless soft warning `Version mismatch: Host [2.12.0] > Co-proc [2.9.0]` — advisory only; the freeze fix is the C6's transport auto-recovery, not strict version equality.
 
 ## Key sdkconfig Notes
 
@@ -134,6 +136,6 @@ Cloned in parent directory for hardware reference:
 2. **MIPI DSI FPC cables are fragile.** A loose cable makes all DSI API calls succeed but produces zero visible output. The backlight (separate FPC pins) still works, making it look like a software issue.
 3. **USB power matters.** The board needs >600mA. Bad cables or weak USB ports cause connect/disconnect loops that look like crash loops.
 4. **The factory firmware uses the wrong display driver (EK79007).** Don't use it as a display test for our JD9165 panel.
-5. **The C6 can only be flashed over SDIO from the P4.** There is no USB port for the C6. Use the `host_performs_slave_ota` example from esp_hosted.
+5. **The C6 can only be flashed over SDIO from the P4.** There is no USB port for the C6. Proven method: the CrowPanel SDIO-OTA tool with the prebuilt v2.9.7 binary (see the "C6 Co-processor" section above). The generic `host_performs_slave_ota` example with a self-built 2.12.x image fails at `esp_ota_end` validate on the 2.3.x slave — don't use it.
 6. **The JD9165 needs a full vendor init sequence.** The esp_lcd_jd9165 component only sends Sleep Out + Display On by default. The panel shows black without ~50 vendor register writes (power, VCOM, gamma). The proper init is in `board.c` `jd9165_init_cmds[]`. Previously the display worked because factory firmware had programmed those registers and they persisted across soft resets — until clean rebuilds with hard resets wiped them.
 7. **Never do clean rebuilds casually.** Deleting `build/` and `managed_components/` for a simple code change caused hours of display debugging. Use incremental builds (`ninja -C build`) for code changes. Only clean rebuild when `sdkconfig.defaults` actually changes.
