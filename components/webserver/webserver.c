@@ -88,8 +88,8 @@ static esp_err_t api_put_status(httpd_req_t *req)
 
     /* Auto-expire with countdown: {"auto_expire_min": 30} */
     cJSON *expire = cJSON_GetObjectItem(root, "auto_expire_min");
-    if (expire && cJSON_IsNumber(expire) && expire->valueint > 0) {
-        int secs = expire->valueint * 60;
+    if (expire && cJSON_IsNumber(expire) && expire->valueint > 0 && expire->valueint <= 1440) {
+        int secs = expire->valueint * 60;  /* capped at 24h — avoids int32 overflow */
         state_timer_start_countdown(secs);
         state_set_auto_expire(secs, state_get_default_mode());
     }
@@ -431,7 +431,9 @@ static esp_err_t ws_handler(httpd_req_t *req)
 
 void webserver_notify_clients(void)
 {
-    if (!s_server || s_ws_count == 0) return;
+    /* s_ws_count is mutated under s_ws_lock by the httpd task; don't read it
+     * unlocked here. The locked send loop below naturally no-ops with 0 clients. */
+    if (!s_server) return;
 
     const status_state_t *state = state_get();
     cJSON *json = state_to_json(state);

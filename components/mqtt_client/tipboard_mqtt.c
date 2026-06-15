@@ -40,11 +40,13 @@ static void handle_mirror_status(const char *data, int len)
     if (subtitle && cJSON_IsString(subtitle)) {
         state_set_subtitle(subtitle->valuestring);
     }
-    /* For countdown timers, start a local countdown matching the primary */
-    if (timer_type && cJSON_IsNumber(timer_type) && timer_type->valueint == 2 &&
+    /* For countdown timers, start a local countdown matching the primary.
+     * Use the enum names, not raw ordinals, so a reorder of timer_type_t can't
+     * silently desync the mirror from the primary. */
+    if (timer_type && cJSON_IsNumber(timer_type) && timer_type->valueint == TIMER_COUNTDOWN &&
         timer_seconds && cJSON_IsNumber(timer_seconds) && timer_seconds->valueint > 0) {
         state_timer_start_countdown(timer_seconds->valueint);
-    } else if (timer_type && timer_type->valueint == 0) {
+    } else if (timer_type && timer_type->valueint == TIMER_NONE) {
         state_timer_stop();
     }
 
@@ -208,8 +210,8 @@ static void handle_command(const char *data, int len)
 
     /* Auto-expire with countdown: {"auto_expire_min": 30} */
     cJSON *expire = cJSON_GetObjectItem(root, "auto_expire_min");
-    if (expire && cJSON_IsNumber(expire) && expire->valueint > 0) {
-        int secs = expire->valueint * 60;
+    if (expire && cJSON_IsNumber(expire) && expire->valueint > 0 && expire->valueint <= 1440) {
+        int secs = expire->valueint * 60;  /* capped at 24h — avoids int32 overflow */
         state_timer_start_countdown(secs);
         state_set_auto_expire(secs, state_get_default_mode());
     }

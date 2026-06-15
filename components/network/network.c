@@ -90,7 +90,14 @@ esp_err_t network_init(void)
         .callback = reconnect_timer_cb,
         .name = "wifi_reconnect",
     };
-    esp_timer_create(&rc_args, &s_reconnect_timer);
+    esp_err_t terr = esp_timer_create(&rc_args, &s_reconnect_timer);
+    if (terr != ESP_OK) {
+        /* Non-fatal: the disconnect handler falls back to a direct (in-task)
+         * reconnect when the timer is NULL — degraded, but not broken. */
+        ESP_LOGW(TAG, "Reconnect timer create failed: %s (reconnect will be in-task)",
+                 esp_err_to_name(terr));
+        s_reconnect_timer = NULL;
+    }
 
     return ESP_OK;
 }
@@ -153,6 +160,10 @@ esp_err_t network_wifi_connect(void)
     strncpy(s_ssid, ssid, sizeof(s_ssid) - 1);
 
     esp_netif_t *sta = esp_netif_create_default_wifi_sta();
+    if (!sta) {
+        ESP_LOGE(TAG, "Failed to create STA netif — continuing without WiFi");
+        return ESP_FAIL;
+    }
 
     /* Set hostname from device config */
     const device_config_t *cfg_dev = config_get();

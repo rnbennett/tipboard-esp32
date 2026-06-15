@@ -60,7 +60,9 @@ esp_err_t state_init(void)
     esp_err_t err = persist_init();
     if (err == ESP_OK) {
         persist_load(&s_state);
-        ESP_LOGI(TAG, "Restored state: mode=%d (%s)", s_state.mode, MODE_LABELS[s_state.mode]);
+        /* state_mode_label() guards the index; persist_load() also clamps mode,
+         * but don't index MODE_LABELS[] directly with a freshly-loaded value. */
+        ESP_LOGI(TAG, "Restored state: mode=%d (%s)", s_state.mode, state_mode_label(s_state.mode));
     } else {
         ESP_LOGW(TAG, "Persistence init failed, using defaults");
     }

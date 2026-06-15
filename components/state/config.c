@@ -85,6 +85,10 @@ static esp_err_t load_config(void)
 {
     struct stat st;
     if (stat(CONFIG_PATH, &st) != 0) return ESP_ERR_NOT_FOUND;
+    if (st.st_size <= 0 || st.st_size > 4096) {
+        ESP_LOGW(TAG, "Config file size %ld out of range, ignoring", (long)st.st_size);
+        return ESP_FAIL;
+    }
 
     FILE *f = fopen(CONFIG_PATH, "r");
     if (!f) return ESP_FAIL;
@@ -93,6 +97,11 @@ static esp_err_t load_config(void)
     if (!buf) { fclose(f); return ESP_ERR_NO_MEM; }
     size_t rd = fread(buf, 1, st.st_size, f);
     fclose(f);
+    if (rd != (size_t)st.st_size) {
+        ESP_LOGW(TAG, "Config file short read (%zu/%ld), ignoring", rd, (long)st.st_size);
+        free(buf);
+        return ESP_FAIL;
+    }
     buf[rd] = '\0';
 
     cJSON *root = cJSON_Parse(buf);
@@ -108,6 +117,7 @@ static esp_err_t load_config(void)
             if (item && cJSON_IsString(item)) {
                 strncpy(s_config.mode_labels[i], item->valuestring,
                         sizeof(s_config.mode_labels[i]) - 1);
+                s_config.mode_labels[i][sizeof(s_config.mode_labels[i]) - 1] = '\0';
             }
         }
     }
@@ -121,6 +131,7 @@ static esp_err_t load_config(void)
             if (item && cJSON_IsString(item)) {
                 strncpy(s_config.mode_subtitles[i], item->valuestring,
                         sizeof(s_config.mode_subtitles[i]) - 1);
+                s_config.mode_subtitles[i][sizeof(s_config.mode_subtitles[i]) - 1] = '\0';
             }
         }
     }
@@ -133,20 +144,21 @@ static esp_err_t load_config(void)
     if ((item = cJSON_GetObjectItem(root, "dim_brightness"))) s_config.dim_brightness = item->valueint;
     if ((item = cJSON_GetObjectItem(root, "dim_start_hour"))) s_config.dim_start_hour = item->valueint;
     if ((item = cJSON_GetObjectItem(root, "dim_end_hour"))) s_config.dim_end_hour = item->valueint;
-    if ((item = cJSON_GetObjectItem(root, "timezone")) && cJSON_IsString(item))
-        strncpy(s_config.timezone, item->valuestring, sizeof(s_config.timezone) - 1);
-    if ((item = cJSON_GetObjectItem(root, "weather_lat")) && cJSON_IsString(item))
-        strncpy(s_config.weather_lat, item->valuestring, sizeof(s_config.weather_lat) - 1);
-    if ((item = cJSON_GetObjectItem(root, "weather_lon")) && cJSON_IsString(item))
-        strncpy(s_config.weather_lon, item->valuestring, sizeof(s_config.weather_lon) - 1);
-    if ((item = cJSON_GetObjectItem(root, "mqtt_broker")) && cJSON_IsString(item))
-        strncpy(s_config.mqtt_broker, item->valuestring, sizeof(s_config.mqtt_broker) - 1);
-    if ((item = cJSON_GetObjectItem(root, "device_name")) && cJSON_IsString(item))
-        strncpy(s_config.device_name, item->valuestring, sizeof(s_config.device_name) - 1);
+    /* CONFIG_STR: copy a JSON string into a fixed buffer with guaranteed NUL. */
+    #define CONFIG_STR(key, field) \
+        if ((item = cJSON_GetObjectItem(root, key)) && cJSON_IsString(item)) { \
+            strncpy(s_config.field, item->valuestring, sizeof(s_config.field) - 1); \
+            s_config.field[sizeof(s_config.field) - 1] = '\0'; \
+        }
+    CONFIG_STR("timezone", timezone);
+    CONFIG_STR("weather_lat", weather_lat);
+    CONFIG_STR("weather_lon", weather_lon);
+    CONFIG_STR("mqtt_broker", mqtt_broker);
+    CONFIG_STR("device_name", device_name);
     if ((item = cJSON_GetObjectItem(root, "mirror_mode")) && cJSON_IsNumber(item))
         s_config.mirror_mode = item->valueint;
-    if ((item = cJSON_GetObjectItem(root, "mirror_source")) && cJSON_IsString(item))
-        strncpy(s_config.mirror_source, item->valuestring, sizeof(s_config.mirror_source) - 1);
+    CONFIG_STR("mirror_source", mirror_source);
+    #undef CONFIG_STR
 
     cJSON_Delete(root);
     ESP_LOGI(TAG, "Config loaded");
@@ -156,7 +168,12 @@ static esp_err_t load_config(void)
 esp_err_t config_init(void)
 {
     set_defaults();
-    load_config(); /* Override defaults with saved values if they exist */
+    esp_err_t err = load_config(); /* Override defaults with saved values if they exist */
+    if (err == ESP_FAIL) {
+        /* Distinguish corruption (parse/size/read fail) from a fresh device
+         * (ESP_ERR_NOT_FOUND) — the former silently reverts every setting. */
+        ESP_LOGW(TAG, "Saved config invalid/corrupt; running on defaults");
+    }
     s_initialized = true;
     return ESP_OK;
 }

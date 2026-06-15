@@ -113,6 +113,11 @@ esp_err_t persist_load(status_state_t *state)
 
     size_t rd = fread(buf, 1, st.st_size, f);
     fclose(f);
+    if (rd != (size_t)st.st_size) {
+        ESP_LOGW(TAG, "State file short read (%zu/%ld), ignoring", rd, (long)st.st_size);
+        free(buf);
+        return ESP_FAIL;
+    }
     buf[rd] = '\0';
 
     cJSON *root = cJSON_Parse(buf);
@@ -123,20 +128,33 @@ esp_err_t persist_load(status_state_t *state)
     }
 
     cJSON *item;
-    if ((item = cJSON_GetObjectItem(root, "mode"))) state->mode = item->valueint;
+    /* Bounds-check every enum-typed field: a corrupt or stale state.json can
+     * carry an out-of-range integer that would otherwise index MODE_LABELS[]
+     * (etc.) out of bounds at read time. Out-of-range values keep the default. */
+    if ((item = cJSON_GetObjectItem(root, "mode")) &&
+        item->valueint >= 0 && item->valueint < MODE_COUNT)
+        state->mode = (status_mode_t)item->valueint;
     if ((item = cJSON_GetObjectItem(root, "subtitle")) && cJSON_IsString(item) && item->valuestring) {
         strncpy(state->subtitle, item->valuestring, sizeof(state->subtitle) - 1);
         state->subtitle[sizeof(state->subtitle) - 1] = '\0';
     }
-    if ((item = cJSON_GetObjectItem(root, "timer_type"))) state->timer_type = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "timer_type")) &&
+        item->valueint >= TIMER_NONE && item->valueint <= TIMER_COUNTDOWN)
+        state->timer_type = (timer_type_t)item->valueint;
     if ((item = cJSON_GetObjectItem(root, "timer_started_at"))) state->timer_started_at = (int64_t)item->valuedouble;
     if ((item = cJSON_GetObjectItem(root, "timer_duration_sec"))) state->timer_duration_sec = item->valueint;
     if ((item = cJSON_GetObjectItem(root, "auto_expire_enabled"))) state->auto_expire_enabled = cJSON_IsTrue(item);
     if ((item = cJSON_GetObjectItem(root, "auto_expire_at"))) state->auto_expire_at = (int64_t)item->valuedouble;
-    if ((item = cJSON_GetObjectItem(root, "auto_expire_revert_to"))) state->auto_expire_revert_to = item->valueint;
-    if ((item = cJSON_GetObjectItem(root, "source"))) state->source = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "auto_expire_revert_to")) &&
+        item->valueint >= 0 && item->valueint < MODE_COUNT)
+        state->auto_expire_revert_to = (status_mode_t)item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "source")) &&
+        item->valueint >= SOURCE_MANUAL && item->valueint <= SOURCE_MQTT)
+        state->source = (status_source_t)item->valueint;
     if ((item = cJSON_GetObjectItem(root, "priority"))) state->priority = item->valueint;
-    if ((item = cJSON_GetObjectItem(root, "pomo_phase"))) state->pomo_phase = item->valueint;
+    if ((item = cJSON_GetObjectItem(root, "pomo_phase")) &&
+        item->valueint >= POMO_IDLE && item->valueint <= POMO_BREAK)
+        state->pomo_phase = (pomo_phase_t)item->valueint;
     if ((item = cJSON_GetObjectItem(root, "pomo_work_sec"))) state->pomo_work_sec = item->valueint;
     if ((item = cJSON_GetObjectItem(root, "pomo_break_sec"))) state->pomo_break_sec = item->valueint;
 

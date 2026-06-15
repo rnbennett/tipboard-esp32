@@ -240,7 +240,15 @@ void app_main(void)
     if (TIPBOARD_WIFI_SSID[0]) {
         network_set_credentials(TIPBOARD_WIFI_SSID, TIPBOARD_WIFI_PASS);
     }
-    network_wifi_connect();
+    /* Don't swallow the result: on the P4 a transient esp_hosted/SDIO failure
+     * can leave the device with no WiFi and no AP fallback — log it loudly so
+     * it isn't an invisible "web/MQTT never came up" mystery. NTP/HTTP/MQTT
+     * below still start and recover if WiFi comes up later. */
+    esp_err_t wifi_err = network_wifi_connect();
+    if (wifi_err != ESP_OK) {
+        ESP_LOGE(TAG, "network_wifi_connect failed: %s — running without WiFi until recovery",
+                 esp_err_to_name(wifi_err));
+    }
     ntp_init();
 
     /* ── HTTP server (starts immediately, serves once WiFi connects) ── */
