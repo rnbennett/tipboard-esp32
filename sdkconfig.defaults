@@ -55,13 +55,16 @@ CONFIG_ESP_SDIO_TX_Q_SIZE=20
 CONFIG_ESP_SDIO_RX_Q_SIZE=20
 CONFIG_SLAVE_IDF_TARGET_ESP32C6=y
 
-# Auto-recover from a dead C6 RPC link (mitigates the host<->C6 esp_hosted
-# version-mismatch freeze: if comms to the C6 die, the host resets itself and
-# re-establishes the link instead of leaving web/MQTT permanently frozen).
-# State persists in LittleFS, so the mode is restored after the reboot.
-CONFIG_ESP_HOSTED_SLAVE_RESET_ONLY_IF_NECESSARY=y
-CONFIG_ESP_HOSTED_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE=y
-CONFIG_ESP_HOSTED_HOST_RESTART_NO_COMMUNICATION_WITH_SLAVE_TIMEOUT=10
+# Reset the C6 co-processor on every host boot for a clean SDIO handshake.
+# The real freeze fix is the C6 firmware upgrade to esp_hosted 2.9.7, which adds
+# SDIO transport failure-detection + auto-reinit (absent in the factory 2.3.x).
+# With the C6 self-healing, the host just needs a clean reset each boot — this is
+# the proven-stable config for this board (matches the CrowPanel C6-OTA tool).
+# NOTE: RESET_ON_EVERY_HOST_BOOTUP is mutually exclusive with the older
+# HOST_RESTART_NO_COMMUNICATION mitigation (esp_hosted enforces this), and that
+# mitigation + RESET_ONLY_IF_NECESSARY caused a boot loop with the upgraded C6
+# (host kept restarting itself without ever resetting the wedged C6).
+CONFIG_ESP_HOSTED_SLAVE_RESET_ON_EVERY_HOST_BOOTUP=y
 
 # WiFi Remote buffer config
 CONFIG_WIFI_RMT_STATIC_RX_BUFFER_NUM=16
