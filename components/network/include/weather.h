@@ -14,8 +14,12 @@ typedef struct {
 /* Start weather polling task (fetches every 15 min). Call after WiFi connected. */
 esp_err_t weather_init(void);
 
-/* Get current weather data (may be stale if fetch failed) */
+/* Get current weather data (may be stale if fetch failed).
+ * Returns a live pointer — prefer weather_get_copy() from other tasks. */
 const weather_data_t *weather_get(void);
+
+/* Copy a coherent snapshot of the weather data (lock-protected) into *out. */
+void weather_get_copy(weather_data_t *out);
 
 /* Get short description from WMO weather code (e.g., "Sunny", "Rain") */
 const char *weather_code_desc(int code);

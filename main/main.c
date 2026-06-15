@@ -97,7 +97,9 @@ static void one_second_lv_timer_cb(lv_timer_t *timer)
 {
     /* Pick up state changes from API/MQTT (cross-task) */
     if (atomic_exchange(&s_state_dirty, false)) {
-        ui_update(state_get());
+        status_state_t snap;
+        state_get_copy(&snap);
+        ui_update(&snap);
     }
     /* Deferred MQTT publish (decoupled from the MQTT event task — see on_state_change) */
     if (atomic_exchange(&s_mqtt_dirty, false)) {
@@ -108,9 +110,10 @@ static void one_second_lv_timer_cb(lv_timer_t *timer)
 
     state_tick();
 
-    const status_state_t *state = state_get();
+    status_state_t snap;
+    state_get_copy(&snap);
     int32_t seconds = state_timer_get_seconds();
-    ui_update_timer(seconds, state->timer_type);
+    ui_update_timer(seconds, snap.timer_type);
 
     /* Update clock + WiFi status every 30 seconds */
     if (++s_time_update_counter >= 30) {
@@ -127,9 +130,10 @@ static void one_second_lv_timer_cb(lv_timer_t *timer)
                               connected ? network_get_rssi_percent() : -1);
 
         /* Weather display */
-        const weather_data_t *w = weather_get();
-        ui_update_weather(w->temp_f, weather_code_icon(w->weather_code),
-                          w->precip_chance, w->valid);
+        weather_data_t w;
+        weather_get_copy(&w);
+        ui_update_weather(w.temp_f, weather_code_icon(w.weather_code),
+                          w.precip_chance, w.valid);
 
         /* Auto-dim based on config quiet hours */
         if (ntp_is_synced()) {
@@ -222,7 +226,9 @@ void app_main(void)
 
     /* ── UI init ── */
     ESP_ERROR_CHECK(ui_init());
-    ui_update(state_get());
+    status_state_t init_snap;
+    state_get_copy(&init_snap);
+    ui_update(&init_snap);
 
     /* ── 1-second LVGL timer ── */
     lv_timer_create(one_second_lv_timer_cb, 1000, NULL);

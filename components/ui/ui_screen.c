@@ -3,6 +3,8 @@
 #include "ui_internal.h"
 #include "board.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -75,10 +77,26 @@ static status_mode_t s_current_mode = MODE_COUNT;
 static pomo_phase_t s_current_pomo_phase = POMO_IDLE;
 
 /* Calendar event cache (written by MQTT task via ui_update_calendar, rendered
- * on the LVGL task via ui_apply_pending_calendar) */
+ * on the LVGL task via ui_apply_pending_calendar / ui_update). Guarded by
+ * s_cal_mux because the MQTT writer and the LVGL readers run on different tasks
+ * (and on the CYD, different cores). */
 static char s_cal_title[64] = "";
 static char s_cal_time[16] = "";
-static volatile bool s_cal_dirty = false;
+static bool s_cal_dirty = false;
+static SemaphoreHandle_t s_cal_mux = NULL;
+
+#define CAL_LOCK()   do { if (s_cal_mux) xSemaphoreTake(s_cal_mux, portMAX_DELAY); } while (0)
+#define CAL_UNLOCK() do { if (s_cal_mux) xSemaphoreGive(s_cal_mux); } while (0)
+
+/* Copy the stashed calendar strings into caller buffers under the lock so the
+ * LVGL render reads a coherent pair without racing the MQTT writer. */
+static void cal_snapshot(char *title, size_t tn, char *time_str, size_t mn)
+{
+    CAL_LOCK();
+    strncpy(title, s_cal_title, tn - 1); title[tn - 1] = '\0';
+    strncpy(time_str, s_cal_time, mn - 1); time_str[mn - 1] = '\0';
+    CAL_UNLOCK();
+}
 
 /* WiFi display toggle */
 static bool s_wifi_show_ip = false;
@@ -259,8 +277,9 @@ static void hero_tap_cb(lv_event_t *e)
     const device_config_t *cfg = config_get();
     if (cfg && cfg->mirror_mode) return;
 
-    const status_state_t *state = state_get();
-    status_mode_t next = (state->mode + 1) % MODE_COUNT;
+    status_state_t snap;
+    state_get_copy(&snap);
+    status_mode_t next = (snap.mode + 1) % MODE_COUNT;
 
     /* Skip POMODORO in tap cycle (it's started explicitly via bottom bar) */
     if (next == MODE_POMODORO) {
@@ -276,14 +295,15 @@ static void hero_gesture_cb(lv_event_t *e)
     if (cfg && cfg->mirror_mode) return;
 
     lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_active());
-    const status_state_t *state = state_get();
+    status_state_t snap;
+    state_get_copy(&snap);
     status_mode_t next;
 
     if (dir == LV_DIR_LEFT) {
-        next = (state->mode + 1) % MODE_COUNT;
+        next = (snap.mode + 1) % MODE_COUNT;
         if (next == MODE_POMODORO) next = (next + 1) % MODE_COUNT;
     } else if (dir == LV_DIR_RIGHT) {
-        next = (state->mode + MODE_COUNT - 1) % MODE_COUNT;
+        next = (snap.mode + MODE_COUNT - 1) % MODE_COUNT;
         if (next == MODE_POMODORO) next = (next + MODE_COUNT - 1) % MODE_COUNT;
     } else {
         return;
@@ -302,11 +322,12 @@ static void bottom_bar_tap_cb(lv_event_t *e)
     const device_config_t *cfg = config_get();
     if (cfg && cfg->mirror_mode) return;
 
-    const status_state_t *state = state_get();
-    if (state->mode == MODE_POMODORO) {
+    status_state_t snap;
+    state_get_copy(&snap);
+    if (snap.mode == MODE_POMODORO) {
         state_pomodoro_cancel();
     } else {
-        state_pomodoro_start(state->pomo_work_sec, state->pomo_break_sec);
+        state_pomodoro_start(snap.pomo_work_sec, snap.pomo_break_sec);
     }
 }
 
@@ -314,6 +335,8 @@ static void bottom_bar_tap_cb(lv_event_t *e)
 
 esp_err_t ui_init(void)
 {
+    if (!s_cal_mux) s_cal_mux = xSemaphoreCreateMutex();
+
     s_screen = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(s_screen, UI_COLOR_BG_BASE, 0);
     lv_obj_set_style_bg_opa(s_screen, LV_OPA_COVER, 0);
@@ -451,15 +474,19 @@ void ui_update(const status_state_t *state)
         } else if (state->pomo_phase == POMO_BREAK) {
             lv_label_set_text(s_pomo_label, "Break time! (tap to cancel)");
         }
-    } else if (s_cal_title[0]) {
-        /* Show next calendar event */
-        if (s_cal_time[0]) {
-            lv_label_set_text_fmt(s_pomo_label, "%s  |  %s", s_cal_title, s_cal_time);
-        } else {
-            lv_label_set_text(s_pomo_label, s_cal_title);
-        }
     } else {
-        lv_label_set_text(s_pomo_label, "Tap for Pomodoro (25:00)");
+        /* Show next calendar event if one is stashed, else the pomodoro hint */
+        char cal_title[64], cal_time[16];
+        cal_snapshot(cal_title, sizeof(cal_title), cal_time, sizeof(cal_time));
+        if (cal_title[0]) {
+            if (cal_time[0]) {
+                lv_label_set_text_fmt(s_pomo_label, "%s  |  %s", cal_title, cal_time);
+            } else {
+                lv_label_set_text(s_pomo_label, cal_title);
+            }
+        } else {
+            lv_label_set_text(s_pomo_label, "Tap for Pomodoro (25:00)");
+        }
     }
 
     s_current_mode = state->mode;
@@ -491,7 +518,9 @@ void ui_update_timer(int32_t seconds, timer_type_t type)
     }
 
     /* Arc only for Pomodoro, just text for meetings */
-    const status_state_t *state = state_get();
+    status_state_t snap;
+    state_get_copy(&snap);
+    const status_state_t *state = &snap;
     if (state->mode == MODE_POMODORO && state->timer_duration_sec > 0) {
         int32_t pct = 100 - ((seconds * 100) / state->timer_duration_sec);
         if (pct < 0) pct = 0;
@@ -590,6 +619,7 @@ void ui_update_weather(float temp_f, const char *icon, int precip_pct, bool vali
  * ui_apply_pending_calendar() (LVGL task) renders them. */
 void ui_update_calendar(const char *title, const char *time_str)
 {
+    CAL_LOCK();
     if (title && title[0]) {
         strncpy(s_cal_title, title, sizeof(s_cal_title) - 1);
         s_cal_title[sizeof(s_cal_title) - 1] = '\0';
@@ -604,24 +634,32 @@ void ui_update_calendar(const char *title, const char *time_str)
         s_cal_time[0] = '\0';
     }
     s_cal_dirty = true;
+    CAL_UNLOCK();
 }
 
 /* Runs on the LVGL task (from the 1-second timer). Renders stashed calendar text
  * — the only place that touches the bottom-bar label for calendar updates. */
 void ui_apply_pending_calendar(void)
 {
-    if (!s_cal_dirty) return;
+    CAL_LOCK();
+    bool dirty = s_cal_dirty;
     s_cal_dirty = false;
+    CAL_UNLOCK();
+    if (!dirty) return;
     if (!s_pomo_label) return;
 
+    char cal_title[64], cal_time[16];
+    cal_snapshot(cal_title, sizeof(cal_title), cal_time, sizeof(cal_time));
+
     /* Only update bottom bar if not in Pomodoro (Pomodoro owns the bottom bar) */
-    const status_state_t *state = state_get();
-    if (state->mode != MODE_POMODORO) {
-        if (s_cal_title[0]) {
-            if (s_cal_time[0]) {
-                lv_label_set_text_fmt(s_pomo_label, "%s  |  %s", s_cal_title, s_cal_time);
+    status_state_t snap;
+    state_get_copy(&snap);
+    if (snap.mode != MODE_POMODORO) {
+        if (cal_title[0]) {
+            if (cal_time[0]) {
+                lv_label_set_text_fmt(s_pomo_label, "%s  |  %s", cal_title, cal_time);
             } else {
-                lv_label_set_text(s_pomo_label, s_cal_title);
+                lv_label_set_text(s_pomo_label, cal_title);
             }
         } else {
             lv_label_set_text(s_pomo_label, "Tap for Pomodoro (25:00)");

@@ -90,7 +90,9 @@ static bool s_connected = false;
 
 static char *state_to_json_str(void)
 {
-    const status_state_t *state = state_get();
+    status_state_t snap;
+    state_get_copy(&snap);
+    const status_state_t *state = &snap;
     cJSON *root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "mode", state_mode_label(state->mode));
     cJSON_AddNumberToObject(root, "mode_id", state->mode);
@@ -223,15 +225,17 @@ static void handle_command(const char *data, int len)
             cJSON *type = cJSON_GetObjectItem(root, "type");
             if (type && cJSON_IsString(type)) {
                 if (strcmp(type->valuestring, "pomodoro") == 0) {
-                    const status_state_t *s = state_get();
-                    state_pomodoro_start(s->pomo_work_sec, s->pomo_break_sec);
+                    status_state_t s;
+                    state_get_copy(&s);
+                    state_pomodoro_start(s.pomo_work_sec, s.pomo_break_sec);
                 } else if (strcmp(type->valuestring, "elapsed") == 0) {
                     state_timer_start_elapsed();
                 }
             }
         } else if (strcmp(cmd->valuestring, "timer_stop") == 0) {
-            const status_state_t *s = state_get();
-            if (s->mode == MODE_POMODORO) {
+            status_state_t s;
+            state_get_copy(&s);
+            if (s.mode == MODE_POMODORO) {
                 state_pomodoro_cancel();
             } else {
                 state_timer_stop();

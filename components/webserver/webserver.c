@@ -49,8 +49,9 @@ static esp_err_t send_json_response(httpd_req_t *req, cJSON *json)
 
 static esp_err_t api_get_status(httpd_req_t *req)
 {
-    const status_state_t *state = state_get();
-    cJSON *json = state_to_json(state);
+    status_state_t snap;
+    state_get_copy(&snap);
+    cJSON *json = state_to_json(&snap);
     return send_json_response(req, json);
 }
 
@@ -59,6 +60,10 @@ static esp_err_t api_get_status(httpd_req_t *req)
 static esp_err_t api_put_status(httpd_req_t *req)
 {
     char buf[256];
+    if (req->content_len >= (int)sizeof(buf)) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Body too large");
+        return ESP_FAIL;
+    }
     int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
     if (ret <= 0) return ESP_FAIL;
     buf[ret] = '\0';
@@ -96,8 +101,9 @@ static esp_err_t api_put_status(httpd_req_t *req)
 
     cJSON_Delete(root);
 
-    const status_state_t *state = state_get();
-    cJSON *resp = state_to_json(state);
+    status_state_t snap;
+    state_get_copy(&snap);
+    cJSON *resp = state_to_json(&snap);
     return send_json_response(req, resp);
 }
 
@@ -106,6 +112,10 @@ static esp_err_t api_put_status(httpd_req_t *req)
 static esp_err_t api_timer_start(httpd_req_t *req)
 {
     char buf[128];
+    if (req->content_len >= (int)sizeof(buf)) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Body too large");
+        return ESP_FAIL;
+    }
     int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
     if (ret <= 0) return ESP_FAIL;
     buf[ret] = '\0';
@@ -119,9 +129,10 @@ static esp_err_t api_timer_start(httpd_req_t *req)
     cJSON *type = cJSON_GetObjectItem(root, "type");
     if (type && cJSON_IsString(type)) {
         if (strcmp(type->valuestring, "pomodoro") == 0) {
-            const status_state_t *s = state_get();
-            int work_sec = s->pomo_work_sec;
-            int break_sec = s->pomo_break_sec;
+            status_state_t s;
+            state_get_copy(&s);
+            int work_sec = s.pomo_work_sec;
+            int break_sec = s.pomo_break_sec;
             cJSON *work_min = cJSON_GetObjectItem(root, "work_min");
             if (work_min && cJSON_IsNumber(work_min)) {
                 work_sec = work_min->valueint * 60;
@@ -135,8 +146,9 @@ static esp_err_t api_timer_start(httpd_req_t *req)
 
     cJSON_Delete(root);
 
-    const status_state_t *state = state_get();
-    cJSON *resp = state_to_json(state);
+    status_state_t snap;
+    state_get_copy(&snap);
+    cJSON *resp = state_to_json(&snap);
     return send_json_response(req, resp);
 }
 
@@ -144,15 +156,16 @@ static esp_err_t api_timer_start(httpd_req_t *req)
 
 static esp_err_t api_timer_stop(httpd_req_t *req)
 {
-    const status_state_t *state = state_get();
-    if (state->mode == MODE_POMODORO) {
+    status_state_t snap;
+    state_get_copy(&snap);
+    if (snap.mode == MODE_POMODORO) {
         state_pomodoro_cancel();
     } else {
         state_timer_stop();
     }
 
-    state = state_get();
-    cJSON *resp = state_to_json(state);
+    state_get_copy(&snap);
+    cJSON *resp = state_to_json(&snap);
     return send_json_response(req, resp);
 }
 
@@ -208,6 +221,24 @@ static esp_err_t api_get_config(httpd_req_t *req)
     cJSON_AddStringToObject(root, "mirror_source", cfg->mirror_source);
 
     return send_json_response(req, root);
+}
+
+/* A latitude/longitude string that gets interpolated into the weather API URL.
+ * Restrict to numeric characters so it can't inject extra query parameters. */
+static bool is_numeric_coord(const char *s)
+{
+    if (!s || !s[0]) return false;
+    for (const char *p = s; *p; p++) {
+        if (!((*p >= '0' && *p <= '9') || *p == '.' || *p == '-' || *p == '+')) return false;
+    }
+    return true;
+}
+
+/* The MQTT broker string is used directly as the client URI — require a known
+ * scheme so a config write can't point the device at an arbitrary transport. */
+static bool is_valid_broker_uri(const char *s)
+{
+    return s && (strncmp(s, "mqtt://", 7) == 0 || strncmp(s, "mqtts://", 8) == 0);
 }
 
 /* ── PUT /api/config ── */
@@ -297,14 +328,29 @@ static esp_err_t api_put_config(httpd_req_t *req)
         cfg.timezone[sizeof(cfg.timezone) - 1] = '\0';
     }
     if ((item = cJSON_GetObjectItem(root, "weather_lat")) && cJSON_IsString(item)) {
+        if (!is_numeric_coord(item->valuestring)) {
+            cJSON_Delete(root);
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid latitude");
+            return ESP_FAIL;
+        }
         strncpy(cfg.weather_lat, item->valuestring, sizeof(cfg.weather_lat) - 1);
         cfg.weather_lat[sizeof(cfg.weather_lat) - 1] = '\0';
     }
     if ((item = cJSON_GetObjectItem(root, "weather_lon")) && cJSON_IsString(item)) {
+        if (!is_numeric_coord(item->valuestring)) {
+            cJSON_Delete(root);
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid longitude");
+            return ESP_FAIL;
+        }
         strncpy(cfg.weather_lon, item->valuestring, sizeof(cfg.weather_lon) - 1);
         cfg.weather_lon[sizeof(cfg.weather_lon) - 1] = '\0';
     }
     if ((item = cJSON_GetObjectItem(root, "mqtt_broker")) && cJSON_IsString(item)) {
+        if (!is_valid_broker_uri(item->valuestring)) {
+            cJSON_Delete(root);
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Broker must be mqtt:// or mqtts://");
+            return ESP_FAIL;
+        }
         strncpy(cfg.mqtt_broker, item->valuestring, sizeof(cfg.mqtt_broker) - 1);
         cfg.mqtt_broker[sizeof(cfg.mqtt_broker) - 1] = '\0';
     }
@@ -419,6 +465,13 @@ static esp_err_t ws_handler(httpd_req_t *req)
     esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
     if (ret != ESP_OK) return ret;
 
+    /* Bound the client-declared frame size before allocating — these frames are
+     * only ever discarded, so cap at 4 KB to stop a malicious client forcing a
+     * large heap allocation (and to avoid a size_t+1 wrap on a huge value). */
+    if (ws_pkt.len > 4096) {
+        ESP_LOGW(TAG, "WS frame too large (%u), ignoring", (unsigned)ws_pkt.len);
+        return ESP_OK;
+    }
     if (ws_pkt.len > 0) {
         ws_pkt.payload = malloc(ws_pkt.len + 1);
         if (!ws_pkt.payload) return ESP_ERR_NO_MEM;
@@ -435,8 +488,9 @@ void webserver_notify_clients(void)
      * unlocked here. The locked send loop below naturally no-ops with 0 clients. */
     if (!s_server) return;
 
-    const status_state_t *state = state_get();
-    cJSON *json = state_to_json(state);
+    status_state_t snap;
+    state_get_copy(&snap);
+    cJSON *json = state_to_json(&snap);
     char *str = cJSON_PrintUnformatted(json);
 
     httpd_ws_frame_t ws_pkt = {
@@ -473,6 +527,17 @@ static esp_err_t api_ota_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
+    /* Reject a missing/zero/negative Content-Length before touching the OTA
+     * partition: with content_len <= 0 the write loop below runs zero times and
+     * esp_ota_end() would commit an empty image — bricking the device. Also cap
+     * to the partition size so a bogus length can't be trusted downstream. */
+    if (req->content_len <= 0 || (size_t)req->content_len > update_partition->size) {
+        ESP_LOGE(TAG, "OTA rejected: invalid content_len %ld (partition %lu)",
+                 (long)req->content_len, (unsigned long)update_partition->size);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid firmware size");
+        return ESP_FAIL;
+    }
+
     ESP_LOGI(TAG, "OTA: writing to partition '%s' at 0x%lx (%ld bytes incoming)",
              update_partition->label, update_partition->address, (long)req->content_len);
 
@@ -501,6 +566,17 @@ static esp_err_t api_ota_handler(httpd_req_t *req)
             free(buf);
             esp_ota_abort(ota_handle);
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Receive failed");
+            return ESP_FAIL;
+        }
+
+        /* First byte of an ESP32 app image is the magic 0xE9. Reject anything
+         * else up front (esp_ota_end would catch it later, but this fails fast
+         * and avoids writing a junk image to the inactive partition). */
+        if (received == 0 && (uint8_t)buf[0] != 0xE9) {
+            ESP_LOGE(TAG, "OTA rejected: bad image magic 0x%02x", (uint8_t)buf[0]);
+            free(buf);
+            esp_ota_abort(ota_handle);
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Not a valid firmware image");
             return ESP_FAIL;
         }
 

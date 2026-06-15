@@ -8,6 +8,7 @@
 #include "cJSON.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 
 static const char *TAG = "weather";
 
@@ -15,6 +16,9 @@ static const char *TAG = "weather";
 #define HTTP_BUF_SIZE      1024
 
 static weather_data_t s_weather = {0};
+/* s_weather is written by the weather task (Core 1) and read by the LVGL task
+ * (Core 0) — guard it so the reader never sees a half-updated struct. */
+static SemaphoreHandle_t s_weather_mux = NULL;
 
 /* WMO weather code descriptions */
 const char *weather_code_desc(int code)
@@ -125,15 +129,18 @@ static esp_err_t fetch_weather(void)
         cJSON *humid = cJSON_GetObjectItem(current, "relative_humidity_2m");
         cJSON *precip = cJSON_GetObjectItem(current, "precipitation_probability");
 
+        if (s_weather_mux) xSemaphoreTake(s_weather_mux, portMAX_DELAY);
         if (temp) s_weather.temp_f = (float)temp->valuedouble;
         if (wcode) s_weather.weather_code = wcode->valueint;
         if (humid) s_weather.humidity = humid->valueint;
         if (precip) s_weather.precip_chance = precip->valueint;
         s_weather.valid = true;
+        weather_data_t w = s_weather;
+        if (s_weather_mux) xSemaphoreGive(s_weather_mux);
 
         ESP_LOGI(TAG, "Weather: %.0f°F %s (%d) humidity=%d%% precip=%d%%",
-                 s_weather.temp_f, weather_code_desc(s_weather.weather_code),
-                 s_weather.weather_code, s_weather.humidity, s_weather.precip_chance);
+                 w.temp_f, weather_code_desc(w.weather_code),
+                 w.weather_code, w.humidity, w.precip_chance);
     }
 
     cJSON_Delete(root);
@@ -153,6 +160,7 @@ static void weather_task(void *arg)
 
 esp_err_t weather_init(void)
 {
+    if (!s_weather_mux) s_weather_mux = xSemaphoreCreateMutex();
     ESP_LOGI(TAG, "Starting weather polling (every 15 min)");
     xTaskCreatePinnedToCore(weather_task, "weather", 8192, NULL, 3, NULL, 1);
     return ESP_OK;
@@ -161,4 +169,12 @@ esp_err_t weather_init(void)
 const weather_data_t *weather_get(void)
 {
     return &s_weather;
+}
+
+void weather_get_copy(weather_data_t *out)
+{
+    if (!out) return;
+    if (s_weather_mux) xSemaphoreTake(s_weather_mux, portMAX_DELAY);
+    *out = s_weather;
+    if (s_weather_mux) xSemaphoreGive(s_weather_mux);
 }

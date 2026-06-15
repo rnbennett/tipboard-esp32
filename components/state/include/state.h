@@ -69,8 +69,14 @@ typedef void (*state_change_cb_t)(const status_state_t *new_state, void *user_da
 /* Initialize state manager (call once at boot) */
 esp_err_t state_init(void);
 
-/* Get read-only pointer to current state */
+/* Get read-only pointer to LIVE current state.
+ * Only safe for a single-field read on the task that owns the mutation; for any
+ * cross-task or multi-field read use state_get_copy() to avoid a torn read. */
 const status_state_t *state_get(void);
+
+/* Copy a coherent, lock-protected snapshot of the current state into *out.
+ * Use this from the UI, webserver, and MQTT tasks before reading state fields. */
+void state_get_copy(status_state_t *out);
 
 /* Mode labels (uppercase, for display) */
 const char *state_mode_label(status_mode_t mode);
