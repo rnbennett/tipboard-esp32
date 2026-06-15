@@ -107,8 +107,8 @@ I work from home and people in my house constantly walk into my office — to gr
 | `TIPBOARD_WEATHER_LAT` | Latitude for weather | `40.7128` |
 | `TIPBOARD_WEATHER_LON` | Longitude for weather | `-74.0060` |
 | `TIPBOARD_MQTT_BROKER` | MQTT broker URI (empty = disabled) | `mqtt://192.168.1.100:1883` |
-| `TIPBOARD_WIFI_SSID` | WiFi network name (empty = AP mode) | `MyNetwork` |
-| `TIPBOARD_WIFI_PASS` | WiFi password | |
+
+> **WiFi credentials are not build-time options.** They are never compiled into the firmware (a flash dump would expose them); provision them at runtime via the captive-portal setup page or `POST /api/wifi` — they persist in NVS. These non-secret defaults seed the device's config only on first boot; everything is editable later from the web dashboard.
 
 ### Web Dashboard
 
@@ -116,10 +116,12 @@ Once connected to WiFi, access the web dashboard at the device's IP address (sho
 
 - Change status mode and subtitle
 - Start/stop timers
-- Adjust brightness and dim schedule
+- Adjust brightness and the night-dim schedule
 - Configure WiFi, MQTT, timezone, and weather location
 - Upload OTA firmware updates
 - Enable mirror mode
+
+**Night dimming:** between `dim_start_hour` and `dim_end_hour` (default 22:00–07:00, in the configured timezone) the backlight drops to `dim_brightness` (default 15%), then returns to full at the end of the window. At boot the screen is full-bright until NTP syncs and the schedule is evaluated, so a brief bright flash before it dims is expected.
 
 ### WiFi Setup
 
@@ -150,6 +152,8 @@ All endpoints accept and return JSON. The board's IP is shown in the top status 
 | `WS` | `/ws` | Real-time status updates | WebSocket |
 
 **Mode values:** 0=Available, 1=Focused, 2=Meeting, 3=Away, 4=Pomodoro, 5=Custom, 6=Streaming
+
+**Optional auth:** set `api_token` in the device config to require an `X-Tipboard-Token: <token>` header on every mutating endpoint (`PUT`/`POST` above). With no token set (default) the API is open on the LAN. `GET /api/config` never returns the token or the MQTT password — only `api_token_set` / `mqtt_password_set` booleans. MQTT broker auth is available via the `mqtt_username` / `mqtt_password` config fields (empty = anonymous).
 
 ## Integrations
 
