@@ -16,23 +16,7 @@ static httpd_handle_t s_server = NULL;
 
 /* ── JSON helpers ── */
 
-static cJSON *state_to_json(const status_state_t *state)
-{
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "mode", state_mode_label(state->mode));
-    cJSON_AddNumberToObject(root, "mode_id", state->mode);
-    cJSON_AddStringToObject(root, "subtitle", state->subtitle);
-    cJSON_AddNumberToObject(root, "timer_type", state->timer_type);
-    cJSON_AddNumberToObject(root, "timer_seconds", state_timer_get_seconds());
-    cJSON_AddNumberToObject(root, "timer_duration", state->timer_duration_sec);
-    cJSON_AddNumberToObject(root, "pomo_phase", state->pomo_phase);
-    cJSON_AddNumberToObject(root, "priority", state->priority);
-    cJSON_AddStringToObject(root, "source",
-        state->source == SOURCE_MANUAL ? "manual" :
-        state->source == SOURCE_API ? "api" :
-        state->source == SOURCE_MQTT ? "mqtt" : "keypad");
-    return root;
-}
+/* state_to_json() is the shared canonical serializer in the state component. */
 
 static esp_err_t send_json_response(httpd_req_t *req, cJSON *json)
 {
@@ -43,6 +27,23 @@ static esp_err_t send_json_response(httpd_req_t *req, cJSON *json)
     cJSON_free(str);
     cJSON_Delete(json);
     return ESP_OK;
+}
+
+/* Gate for state-mutating endpoints. If config.api_token is set (non-empty), the
+ * request must carry a matching X-Tipboard-Token header; if no token is set the
+ * API stays open (unchanged default). Sends 401 and returns false on failure. */
+static bool require_auth(httpd_req_t *req)
+{
+    const device_config_t *cfg = config_get();
+    if (!cfg || cfg->api_token[0] == '\0') return true;  /* auth disabled */
+
+    char hdr[40] = {0};
+    if (httpd_req_get_hdr_value_str(req, "X-Tipboard-Token", hdr, sizeof(hdr)) == ESP_OK
+        && strcmp(hdr, cfg->api_token) == 0) {
+        return true;
+    }
+    httpd_resp_send_err(req, HTTPD_401_UNAUTHORIZED, "Unauthorized");
+    return false;
 }
 
 /* ── GET /api/status ── */
@@ -59,6 +60,7 @@ static esp_err_t api_get_status(httpd_req_t *req)
 
 static esp_err_t api_put_status(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_FAIL;
     char buf[256];
     if (req->content_len >= (int)sizeof(buf)) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Body too large");
@@ -111,6 +113,7 @@ static esp_err_t api_put_status(httpd_req_t *req)
 
 static esp_err_t api_timer_start(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_FAIL;
     char buf[128];
     if (req->content_len >= (int)sizeof(buf)) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Body too large");
@@ -156,6 +159,7 @@ static esp_err_t api_timer_start(httpd_req_t *req)
 
 static esp_err_t api_timer_stop(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_FAIL;
     status_state_t snap;
     state_get_copy(&snap);
     if (snap.mode == MODE_POMODORO) {
@@ -219,6 +223,11 @@ static esp_err_t api_get_config(httpd_req_t *req)
     cJSON_AddStringToObject(root, "device_name", cfg->device_name);
     cJSON_AddNumberToObject(root, "mirror_mode", cfg->mirror_mode);
     cJSON_AddStringToObject(root, "mirror_source", cfg->mirror_source);
+    /* mqtt_username is not a secret; the password and api_token ARE — expose only
+     * whether they are set, never the value, so GET /api/config can't leak them. */
+    cJSON_AddStringToObject(root, "mqtt_username", cfg->mqtt_username);
+    cJSON_AddBoolToObject(root, "mqtt_password_set", cfg->mqtt_password[0] != '\0');
+    cJSON_AddBoolToObject(root, "api_token_set", cfg->api_token[0] != '\0');
 
     return send_json_response(req, root);
 }
@@ -245,6 +254,7 @@ static bool is_valid_broker_uri(const char *s)
 
 static esp_err_t api_put_config(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_FAIL;
     int total_len = req->content_len;
     if (total_len <= 0 || total_len >= 2048) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid content length");
@@ -364,6 +374,20 @@ static esp_err_t api_put_config(httpd_req_t *req)
         strncpy(cfg.mirror_source, item->valuestring, sizeof(cfg.mirror_source) - 1);
         cfg.mirror_source[sizeof(cfg.mirror_source) - 1] = '\0';
     }
+    if ((item = cJSON_GetObjectItem(root, "mqtt_username")) && cJSON_IsString(item)) {
+        strncpy(cfg.mqtt_username, item->valuestring, sizeof(cfg.mqtt_username) - 1);
+        cfg.mqtt_username[sizeof(cfg.mqtt_username) - 1] = '\0';
+    }
+    /* Secrets: only overwrite when a non-empty value is supplied, so a config
+     * round-trip (GET returns no value, PUT omits/blank) doesn't wipe them. */
+    if ((item = cJSON_GetObjectItem(root, "mqtt_password")) && cJSON_IsString(item) && item->valuestring[0]) {
+        strncpy(cfg.mqtt_password, item->valuestring, sizeof(cfg.mqtt_password) - 1);
+        cfg.mqtt_password[sizeof(cfg.mqtt_password) - 1] = '\0';
+    }
+    if ((item = cJSON_GetObjectItem(root, "api_token")) && cJSON_IsString(item) && item->valuestring[0]) {
+        strncpy(cfg.api_token, item->valuestring, sizeof(cfg.api_token) - 1);
+        cfg.api_token[sizeof(cfg.api_token) - 1] = '\0';
+    }
 
     cJSON_Delete(root);
     config_set(&cfg);
@@ -390,6 +414,7 @@ static esp_err_t api_get_version(httpd_req_t *req)
 
 static esp_err_t api_put_brightness(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_FAIL;
     char buf[64];
     int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
     if (ret <= 0) return ESP_FAIL;
@@ -520,6 +545,7 @@ void webserver_notify_clients(void)
 
 static esp_err_t api_ota_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_FAIL;
     esp_ota_handle_t ota_handle = 0;
     const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
     if (!update_partition) {
@@ -650,6 +676,7 @@ static esp_err_t dashboard_handler(httpd_req_t *req)
 
 static esp_err_t api_wifi_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_FAIL;
     char buf[256];
     int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
     if (ret <= 0) return ESP_FAIL;
@@ -689,6 +716,7 @@ static esp_err_t api_wifi_handler(httpd_req_t *req)
 
 static esp_err_t api_reboot_handler(httpd_req_t *req)
 {
+    if (!require_auth(req)) return ESP_FAIL;
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     cJSON *resp = cJSON_CreateObject();
     cJSON_AddStringToObject(resp, "status", "ok");

@@ -31,3 +31,7 @@ main/main_minimal.c
 
 # Debug scripts
 tools/serial_read_*.ps1
+
+# host test binaries
+tools/hosttest/test_*
+!tools/hosttest/test_*.c

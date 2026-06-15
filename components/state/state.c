@@ -5,6 +5,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "cJSON.h"
 
 static const char *TAG = "state";
 
@@ -387,4 +388,24 @@ esp_err_t state_set_default_mode(status_mode_t mode)
 status_mode_t state_get_default_mode(void)
 {
     return s_default_mode;
+}
+
+cJSON *state_to_json(const status_state_t *s)
+{
+    if (!s) return NULL;
+    cJSON *root = cJSON_CreateObject();
+    if (!root) return NULL;
+    cJSON_AddStringToObject(root, "mode", state_mode_label(s->mode));
+    cJSON_AddNumberToObject(root, "mode_id", s->mode);
+    cJSON_AddStringToObject(root, "subtitle", s->subtitle);
+    cJSON_AddNumberToObject(root, "timer_type", s->timer_type);
+    cJSON_AddNumberToObject(root, "timer_seconds", state_timer_get_seconds());
+    cJSON_AddNumberToObject(root, "timer_duration", s->timer_duration_sec);
+    cJSON_AddNumberToObject(root, "pomo_phase", s->pomo_phase);
+    cJSON_AddNumberToObject(root, "priority", s->priority);
+    cJSON_AddStringToObject(root, "source",
+        s->source == SOURCE_MANUAL ? "manual" :
+        s->source == SOURCE_API ? "api" :
+        s->source == SOURCE_MQTT ? "mqtt" : "keypad");
+    return root;
 }

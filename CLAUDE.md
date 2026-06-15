@@ -111,6 +111,21 @@ Managed components (auto-downloaded by ESP-IDF component manager):
 - **Production esp_hosted config:** `CONFIG_ESP_HOSTED_SLAVE_RESET_ON_EVERY_HOST_BOOTUP=y` (resets the C6 for a clean handshake each boot). Do **not** re-add `SLAVE_RESET_ONLY_IF_NECESSARY` + `HOST_RESTART_NO_COMMUNICATION` — with the upgraded C6 that combo boot-loops (host restarts itself on the no-comm timeout without ever resetting the wedged C6), and esp_hosted makes the two strategies mutually exclusive.
 - Host is still esp_hosted 2.12.3, so the boot log prints a harmless soft warning `Version mismatch: Host [2.12.0] > Co-proc [2.9.0]` — advisory only; the freeze fix is the C6's transport auto-recovery, not strict version equality.
 
+## Security & Provisioning
+
+- **WiFi credentials are NOT compiled into the binary.** They live only in NVS, provisioned via the captive-portal setup page (or `network_set_credentials`). Don't re-add `-DTIPBOARD_WIFI_SSID/PASS` to `CMakeLists.txt` — baking creds in made them recoverable via `esptool read_flash` + `strings`. (App-only flashes preserve NVS, so existing creds survive a reflash; a full-erase flash needs re-provisioning via the AP portal.)
+- **Optional API auth:** set `api_token` in the device config to require an `X-Tipboard-Token` header on all mutating endpoints (`PUT /api/status|config|brightness`, `POST /api/timer/*|ota|wifi|reboot`). Empty token (default) = open API, unchanged. `GET /api/config` never returns the token or MQTT password — only `api_token_set`/`mqtt_password_set` booleans.
+- **Optional MQTT broker auth:** `mqtt_username`/`mqtt_password` in config (empty = anonymous).
+- **OTA hardening:** `POST /api/ota` rejects a zero/negative/oversized `Content-Length` and verifies the `0xE9` image magic before writing.
+
+## State serialization (single source of truth)
+
+`state_to_json()` lives in the **state** component (`state.c`) and is the one canonical serializer used by both the REST API (`webserver.c`) and the MQTT/mirror path (`tipboard_mqtt.c`). Don't reintroduce a second serializer — the two drifting silently breaks mirror mode. Read state via `state_get_copy()` (lock-protected snapshot), never the raw `state_get()` pointer, from any task other than the mutator.
+
+## Host tests
+
+Pure logic (no ESP-IDF) is unit-tested off-target under `tools/hosttest/` — `cd tools/hosttest && make test` (needs only `cc`). Currently covers `format_iso_time()`; extend by extracting a pure function into its own `.c`/`.h` and adding a `test_*.c`.
+
 ## Key sdkconfig Notes
 
 - `CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y` — MUST be set before `CONFIG_ESP32P4_REV_MIN_1=y` takes effect (rev <3.0 and >=3.0 are mutually exclusive in ESP-IDF)

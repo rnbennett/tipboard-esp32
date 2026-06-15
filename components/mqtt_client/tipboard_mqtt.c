@@ -1,4 +1,5 @@
 #include "tipboard_mqtt.h"
+#include "cal_format.h"
 #include "state.h"
 #include <string.h>
 #include "esp_log.h"
@@ -90,16 +91,12 @@ static bool s_connected = false;
 
 static char *state_to_json_str(void)
 {
+    /* Use the canonical serializer (state component) so the MQTT/mirror payload
+     * never drifts from the REST API payload. */
     status_state_t snap;
     state_get_copy(&snap);
-    const status_state_t *state = &snap;
-    cJSON *root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "mode", state_mode_label(state->mode));
-    cJSON_AddNumberToObject(root, "mode_id", state->mode);
-    cJSON_AddStringToObject(root, "subtitle", state->subtitle);
-    cJSON_AddNumberToObject(root, "timer_type", state->timer_type);
-    cJSON_AddNumberToObject(root, "timer_seconds", state_timer_get_seconds());
-    cJSON_AddNumberToObject(root, "pomo_phase", state->pomo_phase);
+    cJSON *root = state_to_json(&snap);
+    if (!root) return NULL;
     char *str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return str;
@@ -297,17 +294,10 @@ static void handle_calendar(const char *data, int len)
         }
     }
 
-    /* Extract time from ISO start string "2026-03-15T14:00:00" → "2:00 PM" */
+    /* Extract time from ISO start string "2026-03-15T14:00:00" → "2:00 PM"
+     * (pure, host-tested helper — see components/mqtt_client/cal_format.c) */
     char time_display[16] = "";
-    if (start_str[0] && strlen(start_str) >= 16) {
-        int hour = 0, min = 0;
-        if (sscanf(start_str + 11, "%d:%d", &hour, &min) == 2) {
-            int h12 = hour % 12;
-            if (h12 == 0) h12 = 12;
-            const char *ampm = hour >= 12 ? "PM" : "AM";
-            snprintf(time_display, sizeof(time_display), "%d:%02d %s", h12, min, ampm);
-        }
-    }
+    format_iso_time(start_str, time_display, sizeof(time_display));
 
     ESP_LOGI(TAG, "Calendar: \"%s\" at %s", title_str, time_display);
     ui_update_calendar(title_str, time_display);
@@ -390,6 +380,9 @@ esp_err_t tipboard_mqtt_init(void)
 
     esp_mqtt_client_config_t config = {
         .broker.address.uri = broker,
+        /* Optional broker auth — empty username/password = anonymous (unchanged). */
+        .credentials.username = (cfg && cfg->mqtt_username[0]) ? cfg->mqtt_username : NULL,
+        .credentials.authentication.password = (cfg && cfg->mqtt_password[0]) ? cfg->mqtt_password : NULL,
         .network.reconnect_timeout_ms = 5000,
         .session.last_will = {
             .topic = TOPIC_AVAILABLE,

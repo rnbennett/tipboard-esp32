@@ -78,6 +78,13 @@ const status_state_t *state_get(void);
  * Use this from the UI, webserver, and MQTT tasks before reading state fields. */
 void state_get_copy(status_state_t *out);
 
+/* Build the canonical state JSON (caller owns the object — cJSON_Delete it, or
+ * cJSON_PrintUnformatted + cJSON_free). Single source of truth shared by the
+ * REST API and the MQTT/mirror path so the two serializations never drift.
+ * Pass a snapshot from state_get_copy(). */
+typedef struct cJSON cJSON;
+cJSON *state_to_json(const status_state_t *s);
+
 /* Mode labels (uppercase, for display) */
 const char *state_mode_label(status_mode_t mode);
 
@@ -135,6 +142,10 @@ typedef struct {
     char device_name[32];                 /* Hostname + MQTT topic prefix e.g. "tipboard" */
     uint8_t mirror_mode;                  /* 0=primary, 1=mirror (read-only display) */
     char mirror_source[32];               /* device_name of primary to mirror */
+    char mqtt_username[32];               /* MQTT broker username (empty = anonymous) */
+    char mqtt_password[64];               /* MQTT broker password */
+    char api_token[33];                   /* If non-empty, required as the X-Tipboard-Token
+                                           * header on mutating API calls (empty = open) */
 } device_config_t;
 
 /* Get pointer to device config */

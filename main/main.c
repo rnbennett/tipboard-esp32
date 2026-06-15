@@ -242,10 +242,9 @@ void app_main(void)
     /* ── Network init (WiFi + NTP) ── */
     ESP_ERROR_CHECK(network_init());
 
-    /* Seed WiFi credentials from .env if provided (idempotent — safe to call every boot) */
-    if (TIPBOARD_WIFI_SSID[0]) {
-        network_set_credentials(TIPBOARD_WIFI_SSID, TIPBOARD_WIFI_PASS);
-    }
+    /* WiFi credentials come from NVS (captive-portal setup), never from the
+     * firmware binary — see CMakeLists.txt. If NVS has none, network_wifi_connect
+     * brings up the AP setup portal. */
     /* Don't swallow the result: on the P4 a transient esp_hosted/SDIO failure
      * can leave the device with no WiFi and no AP fallback — log it loudly so
      * it isn't an invisible "web/MQTT never came up" mystery. NTP/HTTP/MQTT

@@ -38,6 +38,9 @@ static void set_defaults(void)
     strncpy(s_config.device_name, "tipboard", sizeof(s_config.device_name) - 1);
     s_config.mirror_mode = 0;
     s_config.mirror_source[0] = '\0';
+    s_config.mqtt_username[0] = '\0';
+    s_config.mqtt_password[0] = '\0';
+    s_config.api_token[0] = '\0';
 }
 
 static esp_err_t save_config(void)
@@ -66,6 +69,10 @@ static esp_err_t save_config(void)
     cJSON_AddStringToObject(root, "device_name", s_config.device_name);
     cJSON_AddNumberToObject(root, "mirror_mode", s_config.mirror_mode);
     cJSON_AddStringToObject(root, "mirror_source", s_config.mirror_source);
+    /* Secrets — persisted to LittleFS only, never emitted over HTTP (see webserver). */
+    cJSON_AddStringToObject(root, "mqtt_username", s_config.mqtt_username);
+    cJSON_AddStringToObject(root, "mqtt_password", s_config.mqtt_password);
+    cJSON_AddStringToObject(root, "api_token", s_config.api_token);
 
     char *str = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -158,6 +165,9 @@ static esp_err_t load_config(void)
     if ((item = cJSON_GetObjectItem(root, "mirror_mode")) && cJSON_IsNumber(item))
         s_config.mirror_mode = item->valueint;
     CONFIG_STR("mirror_source", mirror_source);
+    CONFIG_STR("mqtt_username", mqtt_username);
+    CONFIG_STR("mqtt_password", mqtt_password);
+    CONFIG_STR("api_token", api_token);
     #undef CONFIG_STR
 
     cJSON_Delete(root);

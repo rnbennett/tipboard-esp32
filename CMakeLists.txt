@@ -46,22 +46,18 @@ endif()
 if(NOT DEFINED TIPBOARD_MQTT_BROKER)
     set(TIPBOARD_MQTT_BROKER "")
 endif()
-if(NOT DEFINED TIPBOARD_WIFI_SSID)
-    set(TIPBOARD_WIFI_SSID "")
-endif()
-if(NOT DEFINED TIPBOARD_WIFI_PASS)
-    set(TIPBOARD_WIFI_PASS "")
-endif()
 
-# Build compile flags string
+# Build compile flags string.
+# NOTE: WiFi credentials are deliberately NOT compiled in — baking the SSID/pass
+# into the firmware binary made them recoverable with `esptool read_flash` +
+# `strings`. Credentials live only in NVS now, provisioned via the captive-portal
+# setup page (or `network_set_credentials`). Non-secret defaults stay as -D flags.
 add_compile_options(
     "-D${BOARD_DEFINE}"
     "-DTIPBOARD_TIMEZONE=\"${TIPBOARD_TIMEZONE}\""
     "-DTIPBOARD_WEATHER_LAT=\"${TIPBOARD_WEATHER_LAT}\""
     "-DTIPBOARD_WEATHER_LON=\"${TIPBOARD_WEATHER_LON}\""
     "-DTIPBOARD_MQTT_BROKER=\"${TIPBOARD_MQTT_BROKER}\""
-    "-DTIPBOARD_WIFI_SSID=\"${TIPBOARD_WIFI_SSID}\""
-    "-DTIPBOARD_WIFI_PASS=\"${TIPBOARD_WIFI_PASS}\""
 )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
