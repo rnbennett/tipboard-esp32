@@ -8,7 +8,7 @@ ESP-IDF does NOT work from Git Bash/MSYS2. Use PowerShell scripts.
 
 **Build + Flash (full pipeline):**
 ```bash
-cd "C:/Users/rnben/OneDrive/Documents/Development/tipboard"
+cd "C:/Users/rnben/Development/tipboard"
 powershell.exe -ExecutionPolicy Bypass -File build_flash.ps1 2>&1 | tail -20
 ```
 
@@ -16,7 +16,7 @@ powershell.exe -ExecutionPolicy Bypass -File build_flash.ps1 2>&1 | tail -20
 ```bash
 powershell.exe -Command "& {
   \$env:PATH='C:\Espressif\tools\riscv32-esp-elf\esp-14.2.0_20251107\riscv32-esp-elf\bin;C:\Espressif\tools\cmake\3.30.2\bin;C:\Espressif\tools\ninja\1.12.1;C:\Espressif\tools\idf-git\2.44.0\cmd;C:\Espressif\python_env\idf5.5_py3.11_env\Scripts;C:\Program Files\Git\cmd;' + \$env:PATH
-  Set-Location 'C:\Users\rnben\OneDrive\Documents\Development\tipboard'
+  Set-Location 'C:\Users\rnben\Development\tipboard'
   & ninja -C build
 }" 2>&1 | tail -20
 ```
@@ -29,8 +29,8 @@ Monitor runs as a background task — use TaskOutput to read it.
 
 **Clean rebuild (required when sdkconfig.defaults changes):**
 ```bash
-rm -f "C:/Users/rnben/OneDrive/Documents/Development/tipboard/sdkconfig"
-rm -rf "C:/Users/rnben/OneDrive/Documents/Development/tipboard/build"
+rm -f "C:/Users/rnben/Development/tipboard/sdkconfig"
+rm -rf "C:/Users/rnben/Development/tipboard/build"
 ```
 Then run the full build+flash command above.
 
