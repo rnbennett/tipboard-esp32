@@ -1,8 +1,14 @@
 # Tipboard Calendar Automations
-# Add these to your Home Assistant automations.yaml or create via UI
-# Calendar entity: calendar.YOUR_CALENDAR_ENTITY
+# Add these to your Home Assistant automations.yaml (or create via UI).
+# Replace calendar.YOUR_CALENDAR_ENTITY with your calendar entity. To combine
+# several calendars, list each entity in the triggers / get_events target and
+# concatenate their ['events'] lists in the payload template.
+#
+# Filters applied everywhere:
+#   - all-day events (OOO, travel notes, free-time markers) never count as meetings
+#   - ⚡-prefixed titles are personal blockers, not meetings
 
-# 1. Publish next calendar event to MQTT every 5 minutes
+# 1. Publish the next event to MQTT every 5 minutes
 - alias: "Tipboard: Publish Next Calendar Event"
   trigger:
     - platform: time_pattern
@@ -10,29 +16,43 @@
     - platform: homeassistant
       event: start
   action:
-    - service: calendar.get_events
+    # Skip while the calendar integration is down (e.g. needs reauth)
+    - condition: template
+      value_template: >-
+        {{ states('calendar.YOUR_CALENDAR_ENTITY') not in ['unknown', 'unavailable'] }}
+    - action: calendar.get_events
       target:
         entity_id: calendar.YOUR_CALENDAR_ENTITY
       data:
         duration:
           hours: 8
       response_variable: events
-    - service: mqtt.publish
+    - action: mqtt.publish
       data:
         topic: tipboard/calendar
         retain: true
         payload: >-
           {% set all_events = events['calendar.YOUR_CALENDAR_ENTITY']['events'] %}
-          {% set real = all_events | rejectattr('summary', 'match', '⚡') | list %}
-          {% if real | length > 0 %}
-            {% set e = real[0] %}
-            {"title": "{{ e.summary }}", "start": "{{ e.start }}", "end": "{{ e.end }}"}
+          {# all-day events have a date-only start ("2026-10-05"); timed ones contain "T" #}
+          {% set real = all_events
+             | rejectattr('summary', 'match', '⚡')
+             | selectattr('start', 'search', 'T')
+             | list %}
+          {# pick the earliest by real timestamp; string sort breaks on mixed tz offsets #}
+          {% set ns = namespace(e=none, ts=none) %}
+          {% for x in real %}
+            {% set t = as_timestamp(x.start) %}
+            {% if ns.ts is none or t < ns.ts %}{% set ns.e = x %}{% set ns.ts = t %}{% endif %}
+          {% endfor %}
+          {% if ns.e is not none %}
+            {% set e = ns.e %}
+            {"title": "{{ e.summary }}", "start": "{{ as_local(as_datetime(e.start)).isoformat() }}", "end": "{{ as_local(as_datetime(e.end)).isoformat() }}"}
           {% else %}
             {"title": "", "start": "", "end": ""}
           {% endif %}
 
 # 2. Auto-switch to Meeting mode when a REAL calendar event starts
-#    (skips ⚡-prefixed personal blocker events)
+#    (skips all-day events and ⚡-prefixed blocker events)
 - alias: "Tipboard: Meeting Auto-Switch"
   trigger:
     - platform: calendar
@@ -40,9 +60,11 @@
       entity_id: calendar.YOUR_CALENDAR_ENTITY
   condition:
     - condition: template
-      value_template: "{{ not trigger.calendar_event.summary.startswith('⚡') }}"
+      value_template: >-
+        {{ not trigger.calendar_event.all_day
+           and not trigger.calendar_event.summary.startswith('⚡') }}
   action:
-    - service: mqtt.publish
+    - action: mqtt.publish
       data:
         topic: tipboard/command
         payload: >-
@@ -50,7 +72,8 @@
            "subtitle": "{{ trigger.calendar_event.summary }}",
            "auto_expire_min": {{ ((as_timestamp(trigger.calendar_event.end) - now().timestamp()) / 60) | int }}}
 
-# 3. Revert from Meeting mode when calendar event ends
+# 3. Revert from Meeting mode when a calendar event ends
+#    (same filters, so an all-day event ending at midnight can't cancel a real meeting)
 - alias: "Tipboard: Meeting Auto-Revert"
   trigger:
     - platform: calendar
@@ -58,9 +81,11 @@
       entity_id: calendar.YOUR_CALENDAR_ENTITY
   condition:
     - condition: template
-      value_template: "{{ not trigger.calendar_event.summary.startswith('⚡') }}"
+      value_template: >-
+        {{ not trigger.calendar_event.all_day
+           and not trigger.calendar_event.summary.startswith('⚡') }}
   action:
-    - service: mqtt.publish
+    - action: mqtt.publish
       data:
         topic: tipboard/command
         payload: '{"mode": 0}'
