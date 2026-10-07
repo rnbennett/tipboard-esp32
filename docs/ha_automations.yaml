@@ -85,6 +85,19 @@
         {{ not trigger.calendar_event.all_day
            and not trigger.calendar_event.summary.startswith('⚡') }}
   action:
+    # Back-to-back meetings: the next event's start fires at the same instant as
+    # this end. Wait, then skip the revert if a timed event is still in progress
+    # or Auto-Switch just fired. (If skipped wrongly, the board's auto_expire_min
+    # still ends Meeting mode on time.)
+    - delay: "00:00:10"
+    - condition: template
+      value_template: >-
+        {% set busy = ['calendar.YOUR_CALENDAR_ENTITY']
+             | select('is_state', 'on')
+             | map('state_attr', 'all_day')
+             | reject('eq', true) | list | count > 0 %}
+        {% set lt = state_attr('automation.tipboard_meeting_auto_switch', 'last_triggered') %}
+        {{ not busy and (lt is none or (now() - lt).total_seconds() > 30) }}
     - action: mqtt.publish
       data:
         topic: tipboard/command
